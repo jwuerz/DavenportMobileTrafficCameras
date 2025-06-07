@@ -32,7 +32,7 @@ export default function Hero() {
             onClick={() => scrollToSection("locations")}
             variant="outline"
             size="lg"
-            className="border-2 border-white text-white hover:bg-white hover:text-primary"
+            className="border-2 border-white text-white bg-white/20 hover:bg-white hover:text-primary"
           >
             <MapPin className="mr-2 h-5 w-5" />
             View Current Locations
