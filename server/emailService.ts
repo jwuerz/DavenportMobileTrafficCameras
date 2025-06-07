@@ -1,12 +1,5 @@
-import { MailService } from '@sendgrid/mail';
-
-if (!process.env.SENDGRID_API_KEY) {
-  console.warn("SENDGRID_API_KEY environment variable not set. Email notifications will be disabled.");
-}
-
-const mailService = new MailService();
-if (process.env.SENDGRID_API_KEY) {
-  mailService.setApiKey(process.env.SENDGRID_API_KEY);
+if (!process.env.BREVO_API_KEY) {
+  console.warn("BREVO_API_KEY environment variable not set. Email notifications will be disabled.");
 }
 
 interface ScrapedLocation {
@@ -25,22 +18,48 @@ interface EmailParams {
 }
 
 export async function sendEmail(params: EmailParams): Promise<boolean> {
-  if (!process.env.SENDGRID_API_KEY) {
+  if (!process.env.BREVO_API_KEY) {
     console.log(`Email would be sent to ${params.to}: ${params.subject}`);
     return true; // Return true for development/testing without API key
   }
 
   try {
-    await mailService.send({
-      to: params.to,
-      from: params.from,
+    const brevoPayload = {
+      sender: {
+        email: params.from,
+        name: "Davenport Camera Alerts"
+      },
+      to: [
+        {
+          email: params.to
+        }
+      ],
       subject: params.subject,
-      text: params.text,
-      html: params.html,
+      htmlContent: params.html,
+      textContent: params.text
+    };
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(brevoPayload)
     });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Brevo email error:', response.status, errorData);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log('Email sent successfully via Brevo:', result.messageId);
     return true;
   } catch (error) {
-    console.error('SendGrid email error:', error);
+    console.error('Brevo email error:', error);
     return false;
   }
 }

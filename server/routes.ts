@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { scheduler } from "./scheduler";
 import { insertUserSchema } from "@shared/schema";
+import { sendTestNotification, sendWelcomeEmail } from "./emailService";
 import { z } from "zod";
 
 // Initialize the scheduler
@@ -162,6 +163,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch statistics" });
+    }
+  });
+
+  // Test Brevo email integration
+  app.post("/api/test-email", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const success = await sendTestNotification(email);
+      if (success) {
+        res.json({ message: "Test email sent successfully via Brevo" });
+      } else {
+        res.status(500).json({ message: "Failed to send test email" });
+      }
+    } catch (error) {
+      console.error("Error sending test email:", error);
+      res.status(500).json({ message: "Failed to send test email" });
     }
   });
 
