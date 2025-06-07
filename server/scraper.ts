@@ -32,44 +32,42 @@ export class DavenportScraper {
 
       const locations: ScrapedLocation[] = [];
 
-      // Look for camera location information in various possible selectors
-      const possibleSelectors = [
-        '.camera-locations',
-        '.traffic-enforcement',
-        '.mobile-camera',
-        'table tr',
-        '.content p',
-        '.field-items',
-        '.view-content'
-      ];
-
-      let foundLocations = false;
-
-      for (const selector of possibleSelectors) {
-        const elements = $(selector);
-        if (elements.length > 0) {
-          elements.each((_, element) => {
-            const text = $(element).text().trim();
-            
-            // Look for patterns that indicate camera locations
-            if (this.isLocationText(text)) {
-              const location = this.parseLocationText(text);
-              if (location) {
-                locations.push(location);
-                foundLocations = true;
-              }
-            }
-          });
-
-          if (foundLocations) break;
+      // First, try to find the Mobile Camera Locations section
+      const mobileSection = $('p:contains("Mobile Camera Locations:")').parent();
+      if (mobileSection.length > 0) {
+        console.log('Found Mobile Camera Locations section');
+        
+        // Look for the date range
+        let dateRange = '';
+        const dateElement = mobileSection.find('p.MsoNormal, p:contains("June"), b:contains("June")').first();
+        if (dateElement.length > 0) {
+          dateRange = dateElement.text().trim();
+          console.log('Found date range:', dateRange);
         }
+
+        // Look for the daily schedule in list items
+        const listItems = mobileSection.find('li.MsoNormal, li');
+        console.log('Found', listItems.length, 'list items');
+        
+        listItems.each((_, item) => {
+          const text = $(item).text().trim();
+          console.log('Processing list item:', text);
+          
+          if (this.isDailyScheduleItem(text)) {
+            const parsedLocations = this.parseDailyScheduleItem(text, dateRange);
+            locations.push(...parsedLocations);
+          }
+        });
       }
 
-      // If no structured data found, try to extract from general text content
-      if (!foundLocations) {
+      // If no mobile locations found, try alternative parsing
+      if (locations.length === 0) {
+        console.log('No mobile locations found, trying alternative parsing...');
+        
+        // Look for text containing day patterns
         const bodyText = $('body').text();
-        const extractedLocations = this.extractLocationsFromText(bodyText);
-        locations.push(...extractedLocations);
+        const dailyLocations = this.extractDailyScheduleFromText(bodyText);
+        locations.push(...dailyLocations);
       }
 
       console.log(`Found ${locations.length} camera locations`);
@@ -79,6 +77,71 @@ export class DavenportScraper {
       console.error('Error scraping camera locations:', error);
       throw error;
     }
+  }
+
+  private isDailyScheduleItem(text: string): boolean {
+    const dayPattern = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):/i;
+    return dayPattern.test(text.trim());
+  }
+
+  private parseDailyScheduleItem(text: string, dateRange: string): ScrapedLocation[] {
+    const locations: ScrapedLocation[] = [];
+    
+    // Extract day of week
+    const dayMatch = text.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):/i);
+    if (!dayMatch) return locations;
+    
+    const day = dayMatch[1];
+    
+    // Extract locations after the colon, split by dash or comma
+    const locationsPart = text.substring(text.indexOf(':') + 1).trim();
+    
+    // Split by " – " (en dash) or " - " (hyphen) to get individual locations
+    const locationStrings = locationsPart.split(/\s*[–-]\s*/);
+    
+    locationStrings.forEach(locationStr => {
+      const cleanLocation = locationStr.trim();
+      if (cleanLocation && cleanLocation.length > 5) {
+        locations.push({
+          address: cleanLocation,
+          type: 'mobile',
+          description: `Mobile camera location for ${day}`,
+          schedule: `${day} (${dateRange})`
+        });
+      }
+    });
+    
+    return locations;
+  }
+
+  private extractDailyScheduleFromText(text: string): ScrapedLocation[] {
+    const locations: ScrapedLocation[] = [];
+    
+    // Look for patterns like "Monday: 5800 Eastern Ave – 1900 Brady St."
+    const dayPattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):\s*([^.]+)/gi;
+    let match;
+    
+    while ((match = dayPattern.exec(text)) !== null) {
+      const day = match[1];
+      const locationsPart = match[2].trim();
+      
+      // Split by " – " (en dash) or " - " (hyphen) to get individual locations
+      const locationStrings = locationsPart.split(/\s*[–-]\s*/);
+      
+      locationStrings.forEach(locationStr => {
+        const cleanLocation = locationStr.trim();
+        if (cleanLocation && cleanLocation.length > 5) {
+          locations.push({
+            address: cleanLocation,
+            type: 'mobile',
+            description: `Mobile camera location for ${day}`,
+            schedule: day
+          });
+        }
+      });
+    }
+    
+    return locations;
   }
 
   private isLocationText(text: string): boolean {
@@ -219,8 +282,12 @@ export class DavenportScraper {
     const currentAddresses = new Set(current.map(loc => loc.address.toLowerCase()));
     const storedAddresses = new Set(stored.map(loc => loc.address.toLowerCase()));
 
-    return currentAddresses.size !== storedAddresses.size ||
-           ![...currentAddresses].every(addr => storedAddresses.has(addr));
+    if (currentAddresses.size !== storedAddresses.size) return true;
+    
+    for (const addr of Array.from(currentAddresses)) {
+      if (!storedAddresses.has(addr)) return true;
+    }
+    return false;
   }
 
   private async notifyUsers(locations: ScrapedLocation[]): Promise<void> {
