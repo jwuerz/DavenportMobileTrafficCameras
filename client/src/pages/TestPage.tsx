@@ -11,8 +11,59 @@ export default function TestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const testChromeNotification = () => {
-    if ("Notification" in window && Notification.permission === "granted") {
+  const testChromeNotification = async () => {
+    if (!("Notification" in window)) {
+      toast({
+        title: "Notifications Not Supported",
+        description: "Your browser doesn't support notifications.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Request permission if needed
+    if (Notification.permission === "default") {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        toast({
+          title: "Notifications Blocked",
+          description: "Please allow notifications to test this feature.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (Notification.permission !== "granted") {
+      toast({
+        title: "Notifications Blocked",
+        description: "Notifications are blocked. Please enable them in browser settings.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Try using service worker registration first
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration && registration.showNotification) {
+          await registration.showNotification("🚦 Camera Locations Updated!", {
+            body: "5 new camera locations detected for this week. Click to view details.",
+            icon: "/favicon.ico",
+            tag: "camera-update",
+            requireInteraction: true,
+            badge: "/favicon.ico"
+          });
+          toast({
+            title: "Test Notification Sent",
+            description: "Check your browser for the camera update notification.",
+          });
+          return;
+        }
+      }
+
+      // Fallback to direct Notification constructor
       new Notification("🚦 Camera Locations Updated!", {
         body: "5 new camera locations detected for this week. Click to view details.",
         icon: "/favicon.ico",
@@ -23,22 +74,11 @@ export default function TestPage() {
         title: "Test Notification Sent",
         description: "Check your browser for the camera update notification.",
       });
-    } else if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission().then(function (permission) {
-        if (permission === "granted") {
-          testChromeNotification();
-        } else {
-          toast({
-            title: "Notifications Blocked",
-            description: "Please allow notifications to test this feature.",
-            variant: "destructive",
-          });
-        }
-      });
-    } else {
+    } catch (error) {
+      console.error("Notification error:", error);
       toast({
-        title: "Notifications Not Supported",
-        description: "Your browser doesn't support notifications.",
+        title: "Notification Failed",
+        description: "Unable to send notification in this environment. This may work in production.",
         variant: "destructive",
       });
     }
