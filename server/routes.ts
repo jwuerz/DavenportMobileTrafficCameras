@@ -10,7 +10,7 @@ import { z } from "zod";
 scheduler.initialize();
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
+
   // Get all active camera locations
   app.get("/api/camera-locations", async (req, res) => {
     try {
@@ -26,7 +26,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/subscribe", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
@@ -76,7 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const updates = insertUserSchema.partial().parse(req.body);
-      
+
       const updatedUser = await storage.updateUser(userId, updates);
       if (!updatedUser) {
         return res.status(404).json({ message: "Subscription not found" });
@@ -97,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/subscription/:id", async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
-      
+
       // Mark user as inactive instead of deleting
       const updatedUser = await storage.updateUser(userId, { isActive: false });
       if (!updatedUser) {
@@ -116,7 +116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "Subscription not found" });
       }
@@ -154,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const users = await storage.getAllActiveUsers();
       const locations = await storage.getActiveCameraLocations();
-      
+
       res.json({
         subscribers: users.length,
         locationsMonitored: locations.length,
@@ -167,23 +167,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Test Brevo email integration
-  app.post("/api/test-email", async (req, res) => {
+  app.post('/api/test-email', async (req, res) => {
     try {
       const { email } = req.body;
       if (!email) {
-        return res.status(400).json({ message: "Email is required" });
+        return res.status(400).json({ error: 'Email is required' });
       }
 
-      const success = await sendTestNotification(email);
-      res.json({ 
-        message: success 
-          ? "Test email sent successfully via Brevo" 
-          : "Email system ready (check logs for delivery status)",
-        success
-      });
+      const result = await sendTestNotification(email);
+      if (result) {
+        res.json({ message: 'Test email sent successfully' });
+      } else {
+        res.status(500).json({ error: 'Failed to send test email' });
+      }
     } catch (error) {
-      console.error("Error sending test email:", error);
-      res.status(500).json({ message: "Failed to send test email" });
+      console.error('Test email error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/test-welcome-email', async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+
+      const result = await sendWelcomeEmail(email);
+      if (result) {
+        res.json({ message: 'Test welcome email sent successfully' });
+      } else {
+        res.status(500).json({ error: 'Failed to send test welcome email' });
+      }
+    } catch (error) {
+      console.error('Test welcome email error:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
