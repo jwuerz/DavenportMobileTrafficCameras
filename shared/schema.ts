@@ -7,7 +7,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   phone: text("phone"),
   isActive: boolean("is_active").notNull().default(true),
-  notificationPreferences: json("notification_preferences").$type<string[]>().notNull().default([]),
+  notificationPreferences: json("notification_preferences").$type<string[]>().notNull().default('[]'),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -1,4 +1,6 @@
 import { users, cameraLocations, notifications, type User, type InsertUser, type CameraLocation, type InsertCameraLocation, type InsertNotification, type Notification } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -23,122 +25,98 @@ export interface IStorage {
   getNotificationsByUser(userId: number): Promise<Notification[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private cameraLocations: Map<number, CameraLocation>;
-  private notifications: Map<number, Notification>;
-  private currentUserId: number;
-  private currentLocationId: number;
-  private currentNotificationId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.cameraLocations = new Map();
-    this.notifications = new Map();
-    this.currentUserId = 1;
-    this.currentLocationId = 1;
-    this.currentNotificationId = 1;
-  }
-
-  // User operations
+export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = {
-      ...insertUser,
-      id,
-      createdAt: new Date(),
-    };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: insertUser.email,
+        phone: insertUser.phone || null,
+        isActive: insertUser.isActive ?? true,
+        notificationPreferences: insertUser.notificationPreferences || []
+      })
+      .returning();
     return user;
   }
 
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-
-    const updatedUser = { ...user, ...updates };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    const [user] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
   }
 
   async deleteUser(id: number): Promise<boolean> {
-    return this.users.delete(id);
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   async getAllActiveUsers(): Promise<User[]> {
-    return Array.from(this.users.values()).filter(user => user.isActive);
+    return await db.select().from(users).where(eq(users.isActive, true));
   }
 
-  // Camera location operations
   async getCameraLocation(id: number): Promise<CameraLocation | undefined> {
-    return this.cameraLocations.get(id);
+    const [location] = await db.select().from(cameraLocations).where(eq(cameraLocations.id, id));
+    return location || undefined;
   }
 
   async getAllCameraLocations(): Promise<CameraLocation[]> {
-    return Array.from(this.cameraLocations.values());
+    return await db.select().from(cameraLocations);
   }
 
   async getActiveCameraLocations(): Promise<CameraLocation[]> {
-    return Array.from(this.cameraLocations.values()).filter(location => location.isActive);
+    return await db.select().from(cameraLocations).where(eq(cameraLocations.isActive, true));
   }
 
   async createCameraLocation(insertLocation: InsertCameraLocation): Promise<CameraLocation> {
-    const id = this.currentLocationId++;
-    const location: CameraLocation = {
-      ...insertLocation,
-      id,
-      lastUpdated: new Date(),
-    };
-    this.cameraLocations.set(id, location);
+    const [location] = await db
+      .insert(cameraLocations)
+      .values(insertLocation)
+      .returning();
     return location;
   }
 
   async updateCameraLocation(id: number, updates: Partial<InsertCameraLocation>): Promise<CameraLocation | undefined> {
-    const location = this.cameraLocations.get(id);
-    if (!location) return undefined;
-
-    const updatedLocation = { 
-      ...location, 
-      ...updates, 
-      lastUpdated: new Date() 
-    };
-    this.cameraLocations.set(id, updatedLocation);
-    return updatedLocation;
+    const [location] = await db
+      .update(cameraLocations)
+      .set({ ...updates, lastUpdated: new Date() })
+      .where(eq(cameraLocations.id, id))
+      .returning();
+    return location || undefined;
   }
 
   async deleteCameraLocation(id: number): Promise<boolean> {
-    return this.cameraLocations.delete(id);
+    const result = await db.delete(cameraLocations).where(eq(cameraLocations.id, id));
+    return result.rowCount > 0;
   }
 
   async clearAllCameraLocations(): Promise<void> {
-    this.cameraLocations.clear();
+    await db.delete(cameraLocations);
   }
 
-  // Notification operations
   async createNotification(insertNotification: InsertNotification): Promise<Notification> {
-    const id = this.currentNotificationId++;
-    const notification: Notification = {
-      ...insertNotification,
-      id,
-      sentAt: new Date(),
-    };
-    this.notifications.set(id, notification);
+    const [notification] = await db
+      .insert(notifications)
+      .values(insertNotification)
+      .returning();
     return notification;
   }
 
   async getNotificationsByUser(userId: number): Promise<Notification[]> {
-    return Array.from(this.notifications.values()).filter(
-      notification => notification.userId === userId
-    );
+    return await db.select().from(notifications).where(eq(notifications.userId, userId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
