@@ -12,6 +12,8 @@ export default function TestPage() {
   const { toast } = useToast();
 
   const testChromeNotification = async () => {
+    console.log("Chrome notification button clicked");
+    
     if (!("Notification" in window)) {
       toast({
         title: "Notifications Not Supported",
@@ -21,9 +23,23 @@ export default function TestPage() {
       return;
     }
 
-    // Request permission if needed
-    if (Notification.permission === "default") {
-      const permission = await Notification.requestPermission();
+    try {
+      // Register service worker first if not already registered
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js');
+          console.log('Service Worker registered:', registration);
+        } catch (error) {
+          console.log('Service Worker registration failed:', error);
+        }
+      }
+
+      // Request permission if needed
+      let permission = Notification.permission;
+      if (permission === "default") {
+        permission = await Notification.requestPermission();
+      }
+
       if (permission !== "granted") {
         toast({
           title: "Notifications Blocked",
@@ -32,53 +48,52 @@ export default function TestPage() {
         });
         return;
       }
-    }
 
-    if (Notification.permission !== "granted") {
-      toast({
-        title: "Notifications Blocked",
-        description: "Notifications are blocked. Please enable them in browser settings.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Try using service worker registration first
+      // Try service worker notification first
       if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        if (registration && registration.showNotification) {
-          await registration.showNotification("🚦 Camera Locations Updated!", {
-            body: "5 new camera locations detected for this week. Click to view details.",
-            icon: "/favicon.ico",
-            tag: "camera-update",
-            requireInteraction: true,
-            badge: "/favicon.ico"
-          });
-          toast({
-            title: "Test Notification Sent",
-            description: "Check your browser for the camera update notification.",
-          });
-          return;
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          if (registration && registration.showNotification) {
+            await registration.showNotification("🚦 Camera Locations Updated!", {
+              body: "5 new camera locations detected for this week. Click to view details.",
+              icon: "/favicon.ico",
+              tag: "camera-update",
+              requireInteraction: false,
+              badge: "/favicon.ico"
+            });
+            toast({
+              title: "Service Worker Notification Sent",
+              description: "Check your browser for the camera update notification.",
+            });
+            return;
+          }
+        } catch (swError) {
+          console.log("Service worker notification failed:", swError);
         }
       }
 
       // Fallback to direct Notification constructor
-      new Notification("🚦 Camera Locations Updated!", {
+      const notification = new Notification("🚦 Camera Locations Updated!", {
         body: "5 new camera locations detected for this week. Click to view details.",
         icon: "/favicon.ico",
-        tag: "camera-update",
-        requireInteraction: true
+        tag: "camera-update"
       });
+
+      notification.onclick = function() {
+        window.focus();
+        notification.close();
+      };
+
       toast({
-        title: "Test Notification Sent",
+        title: "Direct Notification Sent",
         description: "Check your browser for the camera update notification.",
       });
+
     } catch (error) {
       console.error("Notification error:", error);
       toast({
         title: "Notification Failed",
-        description: "Unable to send notification in this environment. This may work in production.",
+        description: `Error: ${error.message}. This may work better in production.`,
         variant: "destructive",
       });
     }
@@ -186,7 +201,14 @@ export default function TestPage() {
               <p className="text-sm text-gray-600">
                 Test browser notification functionality. This will request permission if not already granted.
               </p>
-              <Button onClick={testChromeNotification} className="w-full">
+              <Button 
+                onClick={() => {
+                  console.log("Button clicked!");
+                  testChromeNotification();
+                }} 
+                className="w-full"
+                type="button"
+              >
                 Test Chrome Notification
               </Button>
               <div className="text-xs text-gray-500">
