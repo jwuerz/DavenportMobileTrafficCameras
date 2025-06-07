@@ -93,23 +93,21 @@ export class DavenportScraper {
     
     const day = dayMatch[1];
     
-    // Extract locations after the colon, split by dash or comma
+    // Extract locations after the colon
     const locationsPart = text.substring(text.indexOf(':') + 1).trim();
     
-    // Split by " – " (en dash) or " - " (hyphen) to get individual locations
-    const locationStrings = locationsPart.split(/\s*[–-]\s*/);
+    // The dash represents an intersection range, not separate locations
+    // Convert "5800 Eastern Ave – 1900 Brady St." to "5800 Eastern Ave & 1900 Brady St."
+    const intersectionAddress = locationsPart.replace(/\s*[–-]\s*/, ' & ');
     
-    locationStrings.forEach(locationStr => {
-      const cleanLocation = locationStr.trim();
-      if (cleanLocation && cleanLocation.length > 5) {
-        locations.push({
-          address: cleanLocation,
-          type: 'mobile',
-          description: `Mobile camera location for ${day}`,
-          schedule: `${day} (${dateRange})`
-        });
-      }
-    });
+    if (intersectionAddress && intersectionAddress.length > 5) {
+      locations.push({
+        address: intersectionAddress,
+        type: 'mobile',
+        description: `Mobile camera intersection for ${day}`,
+        schedule: `${day} (${dateRange})`
+      });
+    }
     
     return locations;
   }
@@ -125,20 +123,17 @@ export class DavenportScraper {
       const day = match[1];
       const locationsPart = match[2].trim();
       
-      // Split by " – " (en dash) or " - " (hyphen) to get individual locations
-      const locationStrings = locationsPart.split(/\s*[–-]\s*/);
+      // Convert dash to intersection (&) format
+      const intersectionAddress = locationsPart.replace(/\s*[–-]\s*/, ' & ');
       
-      locationStrings.forEach(locationStr => {
-        const cleanLocation = locationStr.trim();
-        if (cleanLocation && cleanLocation.length > 5) {
-          locations.push({
-            address: cleanLocation,
-            type: 'mobile',
-            description: `Mobile camera location for ${day}`,
-            schedule: day
-          });
-        }
-      });
+      if (intersectionAddress && intersectionAddress.length > 5) {
+        locations.push({
+          address: intersectionAddress,
+          type: 'mobile',
+          description: `Mobile camera intersection for ${day}`,
+          schedule: day
+        });
+      }
     }
     
     return locations;
@@ -335,6 +330,12 @@ export class DavenportScraper {
     } catch (error) {
       console.error('Error initializing locations:', error);
     }
+  }
+
+  async forceRefresh(): Promise<void> {
+    console.log('Force refreshing camera locations...');
+    await storage.clearAllCameraLocations();
+    await this.initializeLocations();
   }
 }
 
