@@ -5,26 +5,27 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, Mail, TestTube } from "lucide-react";
 import NotificationGuide from "@/components/NotificationGuide";
+import { useCallback } from 'react';
 
 export default function TestPage() {
   const [testEmail, setTestEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const testFirebaseNotification = async () => {
+  const testFirebaseNotification = useCallback(async () => {
     console.log("Firebase notification button clicked");
     setIsLoading(true);
-    
+
     try {
       const { notificationService } = await import("@/lib/notificationService");
-      
+
       // Initialize and request permission
       const result = await notificationService.requestPermissionAndGetToken();
-      
+
       if (result.granted && result.token) {
         // Test local notification first
         const testSuccess = await notificationService.testNotification();
-        
+
         if (testSuccess) {
           toast({
             title: "Firebase Notifications Enabled",
@@ -54,11 +55,11 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [toast]);
 
   const testChromeNotification = async () => {
     console.log("Chrome notification button clicked");
-    
+
     if (!("Notification" in window)) {
       toast({
         title: "Notifications Not Supported",
@@ -121,7 +122,7 @@ export default function TestPage() {
     }
   };
 
-  const sendTestEmail = async () => {
+  const sendTestEmail = useCallback(async () => {
     if (!testEmail.trim()) {
       toast({
         title: "Email Required",
@@ -163,9 +164,9 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [testEmail, toast]);
 
-  const sendWelcomeEmail = async () => {
+  const sendWelcomeEmail = useCallback(async () => {
     if (!testEmail.trim()) {
       toast({
         title: "Email Required",
@@ -207,9 +208,9 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [testEmail, toast]);
 
-  const sendCameraUpdateEmail = async () => {
+  const sendCameraUpdateEmail = useCallback(async () => {
     if (!testEmail.trim()) {
       toast({
         title: "Email Required",
@@ -251,7 +252,7 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [testEmail, toast]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -269,7 +270,7 @@ export default function TestPage() {
           <div className="flex justify-center">
             <NotificationGuide />
           </div>
-          
+
           <div className="grid gap-6 md:grid-cols-1">
             {/* Email Tests */}
             <Card>
@@ -293,7 +294,7 @@ export default function TestPage() {
                     className="w-full"
                   />
                 </div>
-                
+
                 <div className="grid gap-2 sm:grid-cols-3">
                   <Button 
                     onClick={sendTestEmail}
@@ -302,7 +303,7 @@ export default function TestPage() {
                   >
                     Send Test Email
                   </Button>
-                  
+
                   <Button 
                     onClick={sendWelcomeEmail}
                     disabled={isLoading || !testEmail.trim()}
@@ -311,7 +312,7 @@ export default function TestPage() {
                   >
                     Send Welcome Email
                   </Button>
-                  
+
                   <Button 
                     onClick={sendCameraUpdateEmail}
                     disabled={isLoading || !testEmail.trim()}
@@ -321,7 +322,7 @@ export default function TestPage() {
                     Send Camera Update
                   </Button>
                 </div>
-                
+
                 <div className="space-y-3 text-sm">
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <h4 className="font-medium text-yellow-800 mb-2">Common Email Issues:</h4>
