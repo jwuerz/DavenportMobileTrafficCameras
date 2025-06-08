@@ -88,19 +88,21 @@ export default function CameraMap() {
 
   // Fetch current deployments
   const { data: currentDeployments = [], isLoading: currentLoading } = useQuery({
-    queryKey: ['/api/deployments/current'],
+    queryKey: ['deployments', 'current'],
+    queryFn: () => fetch('/api/deployments/current').then(res => res.json()),
     enabled: selectedTab === 'current'
   });
 
   // Fetch historical deployments
   const { data: historicalDeployments = [], isLoading: historicalLoading } = useQuery({
-    queryKey: ['/api/deployments/historical'],
+    queryKey: ['deployments', 'historical'],
+    queryFn: () => fetch('/api/deployments/historical').then(res => res.json()),
     enabled: selectedTab === 'historical'
   });
 
   // Fetch deployments by date range
   const { data: rangeDeployments = [], isLoading: rangeLoading } = useQuery({
-    queryKey: ['/api/deployments/range', dateRange.from?.toISOString(), dateRange.to?.toISOString()],
+    queryKey: ['deployments', 'range', dateRange.from?.toISOString(), dateRange.to?.toISOString()],
     enabled: selectedTab === 'range' && !!dateRange.from && !!dateRange.to,
     queryFn: async () => {
       if (!dateRange.from || !dateRange.to) return [];
@@ -113,7 +115,8 @@ export default function CameraMap() {
 
   // Fetch all deployments for combined view
   const { data: allDeployments = [], isLoading: allLoading } = useQuery({
-    queryKey: ['/api/deployments'],
+    queryKey: ['deployments', 'all'],
+    queryFn: () => fetch('/api/deployments').then(res => res.json()),
     enabled: selectedTab === 'combined'
   });
 

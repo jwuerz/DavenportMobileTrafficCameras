@@ -51,7 +51,7 @@ export default function DeploymentAnalysis() {
   const cleanupMutation = useMutation({
     mutationFn: () => fetch('/api/deployments/cleanup', { method: 'POST' }).then(res => res.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deployments', 'analyze'] });
+      queryClient.invalidateQueries({ queryKey: ['deployments'] });
       toast({
         title: "Cleanup Successful",
         description: "Duplicate deployments have been removed.",
