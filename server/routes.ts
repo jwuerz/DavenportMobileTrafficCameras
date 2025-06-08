@@ -39,6 +39,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Create new user
         const newUser = await storage.createUser(userData);
+        
+        // Send welcome email to new user
+        try {
+          const emailResult = await sendWelcomeEmail(userData.email);
+          if (!emailResult.success) {
+            console.error("Failed to send welcome email:", emailResult.error);
+            // Don't fail the signup if email fails, just log it
+          }
+        } catch (error) {
+          console.error("Error sending welcome email:", error);
+          // Don't fail the signup if email fails, just log it
+        }
+        
         res.json({ message: "Subscription created successfully", user: newUser });
       }
     } catch (error) {
