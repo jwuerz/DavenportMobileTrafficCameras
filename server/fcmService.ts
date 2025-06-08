@@ -1,3 +1,6 @@
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
+
 interface FCMMessage {
   title: string;
   body: string;
@@ -11,16 +14,43 @@ interface FCMResponse {
 }
 
 export class FCMService {
-  private serverKey: string | null = null;
   private projectId: string | null = null;
+  private messaging: any = null;
+  private isInitialized: boolean = false;
 
   constructor() {
-    this.serverKey = process.env.FIREBASE_SERVER_KEY || null;
     this.projectId = process.env.FIREBASE_PROJECT_ID || null;
+    this.initializeFirebaseAdmin();
+  }
+
+  private initializeFirebaseAdmin(): void {
+    try {
+      // Check if Firebase Admin is already initialized
+      if (getApps().length === 0) {
+        // In development/production without service account file,
+        // use Application Default Credentials (ADC) or environment variables
+        if (this.projectId) {
+          const app = initializeApp({
+            projectId: this.projectId,
+          });
+          this.messaging = getMessaging(app);
+          this.isInitialized = true;
+          console.log('Firebase Admin initialized with project ID:', this.projectId);
+        }
+      } else {
+        // Use existing app
+        this.messaging = getMessaging();
+        this.isInitialized = true;
+        console.log('Using existing Firebase Admin app');
+      }
+    } catch (error) {
+      console.log('Firebase Admin initialization failed, using development mode:', error);
+      this.isInitialized = false;
+    }
   }
 
   isConfigured(): boolean {
-    return !!(this.serverKey && this.projectId);
+    return this.isInitialized && !!this.projectId;
   }
 
   async sendNotification(fcmToken: string, message: FCMMessage): Promise<FCMResponse> {
@@ -31,22 +61,17 @@ export class FCMService {
 
     try {
       const payload = {
-        to: fcmToken,
+        token: fcmToken,
         notification: {
           title: message.title,
           body: message.body,
-          icon: '/favicon.ico',
-          click_action: '/',
-          tag: 'camera-update'
         },
         data: {
           ...message.data,
-          clickAction: 'open_app'
+          clickAction: 'open_app',
+          url: message.data?.url || '/'
         },
         webpush: {
-          headers: {
-            'TTL': '86400' // 24 hours
-          },
           notification: {
             title: message.title,
             body: message.body,
@@ -64,31 +89,17 @@ export class FCMService {
                 title: 'Dismiss'
               }
             ]
+          },
+          headers: {
+            'TTL': '86400'
           }
         }
       };
 
-      const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `key=${this.serverKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      const result = await this.messaging.send(payload);
+      console.log('FCM notification sent successfully:', result);
+      return { success: true, message: 'Notification sent successfully' };
 
-      const result = await response.json();
-
-      if (response.ok && result.success !== 0) {
-        console.log('FCM notification sent successfully:', result.results?.[0]?.message_id);
-        return { success: true, message: 'Notification sent successfully' };
-      } else {
-        console.error('FCM notification failed:', result);
-        return { 
-          success: false, 
-          error: result.results?.[0]?.error || result.error || 'Unknown FCM error' 
-        };
-      }
     } catch (error) {
       console.error('FCM service error:', error);
       return { 
@@ -99,24 +110,66 @@ export class FCMService {
   }
 
   async sendNotificationToMultipleTokens(fcmTokens: string[], message: FCMMessage): Promise<FCMResponse[]> {
-    const results: FCMResponse[] = [];
-    
-    for (const token of fcmTokens) {
-      try {
-        const result = await this.sendNotification(token, message);
-        results.push(result);
-        
-        // Add small delay between notifications to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
-        results.push({ 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        });
-      }
+    if (!this.isConfigured()) {
+      console.log('[DEVELOPMENT MODE] FCM would send to multiple tokens:', fcmTokens.length);
+      return fcmTokens.map(() => ({ success: true, message: "FCM sent in development mode" }));
     }
-    
-    return results;
+
+    try {
+      // Use multicast for efficiency
+      const payload = {
+        tokens: fcmTokens,
+        notification: {
+          title: message.title,
+          body: message.body,
+        },
+        data: {
+          ...message.data,
+          clickAction: 'open_app',
+          url: message.data?.url || '/'
+        },
+        webpush: {
+          notification: {
+            title: message.title,
+            body: message.body,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'camera-update',
+            requireInteraction: true,
+            actions: [
+              {
+                action: 'view_locations',
+                title: 'View Locations'
+              },
+              {
+                action: 'dismiss',
+                title: 'Dismiss'
+              }
+            ]
+          },
+          headers: {
+            'TTL': '86400'
+          }
+        }
+      };
+
+      const result = await this.messaging.sendEachForMulticast(payload);
+      console.log(`FCM multicast sent: ${result.successCount} successful, ${result.failureCount} failed`);
+      
+      return result.responses.map((response, index) => ({
+        success: response.success,
+        message: response.success ? 'Notification sent successfully' : response.error?.message,
+        error: response.success ? undefined : response.error
+      }));
+
+    } catch (error) {
+      console.error('FCM multicast error:', error);
+      const errorResult = { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'FCM multicast error' 
+      };
+      return fcmTokens.map(() => errorResult);
+    }
   }
 
   async sendCameraUpdateNotification(fcmTokens: string[], locationCount: number): Promise<FCMResponse[]> {
