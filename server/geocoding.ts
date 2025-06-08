@@ -85,19 +85,35 @@ export class GeocodingService {
   }
 
   private getFallbackCoordinates(address: string): GeocodeResult {
-    // Extract street names from the address for fallback lookup
     const addressLower = address.toLowerCase();
     
-    // Find matching streets in our known coordinates
-    for (const [street, coords] of this.davenportCoordinates) {
-      if (addressLower.includes(street)) {
-        console.log(`Using fallback coordinates for ${street} in address: ${address}`);
-        return coords;
-      }
+    // Check for specific streets and return appropriate coordinates
+    if (addressLower.includes('eastern ave')) {
+      return { latitude: 41.5236, longitude: -90.5200, formattedAddress: 'Eastern Ave, Davenport, IA' };
+    }
+    if (addressLower.includes('brady st')) {
+      return { latitude: 41.5300, longitude: -90.5500, formattedAddress: 'Brady St, Davenport, IA' };
+    }
+    if (addressLower.includes('division st')) {
+      return { latitude: 41.5150, longitude: -90.5600, formattedAddress: 'Division St, Davenport, IA' };
+    }
+    if (addressLower.includes('jersey ridge rd')) {
+      return { latitude: 41.5400, longitude: -90.5300, formattedAddress: 'Jersey Ridge Rd, Davenport, IA' };
+    }
+    if (addressLower.includes('marquette st')) {
+      return { latitude: 41.5180, longitude: -90.5650, formattedAddress: 'Marquette St, Davenport, IA' };
+    }
+    if (addressLower.includes('53rd st')) {
+      return { latitude: 41.4950, longitude: -90.5800, formattedAddress: '53rd St, Davenport, IA' };
+    }
+    if (addressLower.includes('harrison st')) {
+      return { latitude: 41.5100, longitude: -90.5750, formattedAddress: 'Harrison St, Davenport, IA' };
+    }
+    if (addressLower.includes('river drive')) {
+      return { latitude: 41.5350, longitude: -90.5100, formattedAddress: 'River Drive, Davenport, IA' };
     }
     
-    // If no specific street match, return Davenport city center
-    console.log(`No specific street match, using Davenport center for: ${address}`);
+    // Default to Davenport city center
     return {
       latitude: 41.5236,
       longitude: -90.5776,
@@ -182,27 +198,6 @@ export class GeocodingService {
     }
     
     return `${cleanAddress}, Davenport, Iowa, USA`;
-  }
-
-  private getFallbackCoordinates(address: string): GeocodeResult {
-    // Extract street names from the address for fallback lookup
-    const addressLower = address.toLowerCase();
-    
-    // Find matching streets in our known coordinates
-    for (const [street, coords] of this.davenportCoordinates) {
-      if (addressLower.includes(street)) {
-        console.log(`Using fallback coordinates for ${street} in address: ${address}`);
-        return coords;
-      }
-    }
-    
-    // If no specific street match, return Davenport city center
-    console.log(`No specific street match, using Davenport center for: ${address}`);
-    return {
-      latitude: 41.5236,
-      longitude: -90.5776,
-      formattedAddress: 'Davenport, IA (approximate)'
-    };
   }
 
   async batchGeocode(addresses: string[]): Promise<Map<string, GeocodeResult>> {
