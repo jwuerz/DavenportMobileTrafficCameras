@@ -27,16 +27,35 @@ export class FCMService {
     try {
       // Check if Firebase Admin is already initialized
       if (getApps().length === 0) {
-        // In development/production without service account file,
-        // use Application Default Credentials (ADC) or environment variables
-        if (this.projectId) {
-          const app = initializeApp({
-            projectId: this.projectId,
-          });
-          this.messaging = getMessaging(app);
-          this.isInitialized = true;
-          console.log('Firebase Admin initialized with project ID:', this.projectId);
+        const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+        
+        if (serviceAccountKey && this.projectId) {
+          try {
+            // Parse the service account key from environment variable
+            const serviceAccount = JSON.parse(serviceAccountKey);
+            
+            // Validate it's a proper service account object
+            if (serviceAccount.type === 'service_account' && serviceAccount.private_key && serviceAccount.client_email) {
+              const app = initializeApp({
+                credential: cert(serviceAccount),
+                projectId: this.projectId,
+              });
+              
+              this.messaging = getMessaging(app);
+              this.isInitialized = true;
+              console.log('Firebase Admin initialized with service account for project:', this.projectId);
+              return;
+            } else {
+              console.log('Invalid service account format, falling back to development mode');
+            }
+          } catch (parseError) {
+            console.log('Service account parsing failed, falling back to development mode:', parseError);
+          }
         }
+        
+        // Development mode - Firebase Admin SDK not fully initialized
+        console.log('Firebase Admin running in development mode - notifications will be simulated');
+        this.isInitialized = false;
       } else {
         // Use existing app
         this.messaging = getMessaging();
