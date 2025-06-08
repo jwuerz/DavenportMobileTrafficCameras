@@ -18,7 +18,7 @@ export default function Footer() {
               <p>This is an independent service not affiliated with the City of Davenport.</p>
             </div>
           </div>
-          
+
           <div>
             <h5 className="font-semibold mb-4">Quick Links</h5>
             <ul className="space-y-2 text-gray-300">
@@ -38,13 +38,13 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#privacy" className="hover:text-white transition-colors">
+                <a href="/privacy" className="hover:text-white transition-colors">
                   Privacy Policy
                 </a>
               </li>
             </ul>
           </div>
-          
+
           <div>
             <h5 className="font-semibold mb-4">Contact & Legal</h5>
             <ul className="space-y-2 text-gray-300">
@@ -78,7 +78,7 @@ export default function Footer() {
             </ul>
           </div>
         </div>
-        
+
         <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
           <p>&copy; {new Date().getFullYear()} Davenport Camera Alerts. All rights reserved.</p>
         </div>
