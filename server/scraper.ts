@@ -1,6 +1,8 @@
 import * as cheerio from 'cheerio';
 import { storage } from './storage';
 import { sendCameraUpdateNotification } from './emailService';
+import { geocodingService } from './geocoding';
+import type { InsertCameraDeployment } from '@shared/schema';
 
 interface ScrapedLocation {
   address: string;
@@ -327,9 +329,55 @@ export class DavenportScraper {
       }
       
       console.log(`Initialized ${locations.length} camera locations`);
+      
+      // Save deployment history with geocoding
+      await this.saveDeploymentHistory(locations);
     } catch (error) {
       console.error('Error initializing locations:', error);
     }
+  }
+
+  private async saveDeploymentHistory(locations: ScrapedLocation[]): Promise<void> {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const currentWeek = this.getWeekOfYear(new Date());
+
+      // End any existing deployments
+      await storage.endCurrentDeployments(today);
+
+      // Create new deployment records
+      for (const location of locations) {
+        // Get coordinates for mapping
+        const geocodeResult = await geocodingService.geocodeAddress(location.address);
+        
+        const deployment: InsertCameraDeployment = {
+          address: location.address,
+          type: location.type,
+          description: location.description,
+          schedule: location.schedule,
+          latitude: geocodeResult?.latitude?.toString(),
+          longitude: geocodeResult?.longitude?.toString(),
+          startDate: today,
+          endDate: null,
+          weekOfYear: currentWeek,
+          isActive: true
+        };
+
+        await storage.createCameraDeployment(deployment);
+      }
+
+      console.log(`Saved deployment history for ${locations.length} locations`);
+    } catch (error) {
+      console.error('Error saving deployment history:', error);
+    }
+  }
+
+  private getWeekOfYear(date: Date): string {
+    const year = date.getFullYear();
+    const start = new Date(year, 0, 1);
+    const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+    const week = Math.ceil((days + start.getDay() + 1) / 7);
+    return `${year}-W${week.toString().padStart(2, '0')}`;
   }
 
   async forceRefresh(): Promise<void> {

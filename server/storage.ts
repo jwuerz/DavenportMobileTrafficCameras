@@ -1,6 +1,6 @@
-import { users, cameraLocations, notifications, type User, type InsertUser, type CameraLocation, type InsertCameraLocation, type InsertNotification, type Notification } from "@shared/schema";
+import { users, cameraLocations, notifications, cameraDeployments, type User, type InsertUser, type CameraLocation, type InsertCameraLocation, type InsertNotification, type Notification, type CameraDeployment, type InsertCameraDeployment } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, desc, gte, lte, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -23,6 +23,15 @@ export interface IStorage {
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
   getNotificationsByUser(userId: number): Promise<Notification[]>;
+
+  // Camera deployment history operations
+  createCameraDeployment(deployment: InsertCameraDeployment): Promise<CameraDeployment>;
+  getCameraDeploymentsByWeek(weekOfYear: string): Promise<CameraDeployment[]>;
+  getCameraDeploymentsByDateRange(startDate: string, endDate: string): Promise<CameraDeployment[]>;
+  getAllCameraDeployments(): Promise<CameraDeployment[]>;
+  getCurrentDeployments(): Promise<CameraDeployment[]>;
+  getHistoricalDeployments(): Promise<CameraDeployment[]>;
+  endCurrentDeployments(endDate: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -99,7 +108,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCameraLocation(id: number): Promise<boolean> {
     const result = await db.delete(cameraLocations).where(eq(cameraLocations.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async clearAllCameraLocations(): Promise<void> {
@@ -116,6 +125,68 @@ export class DatabaseStorage implements IStorage {
 
   async getNotificationsByUser(userId: number): Promise<Notification[]> {
     return await db.select().from(notifications).where(eq(notifications.userId, userId));
+  }
+
+  async createCameraDeployment(insertDeployment: InsertCameraDeployment): Promise<CameraDeployment> {
+    const [deployment] = await db
+      .insert(cameraDeployments)
+      .values(insertDeployment)
+      .returning();
+    return deployment;
+  }
+
+  async getCameraDeploymentsByWeek(weekOfYear: string): Promise<CameraDeployment[]> {
+    return await db
+      .select()
+      .from(cameraDeployments)
+      .where(eq(cameraDeployments.weekOfYear, weekOfYear))
+      .orderBy(desc(cameraDeployments.startDate));
+  }
+
+  async getCameraDeploymentsByDateRange(startDate: string, endDate: string): Promise<CameraDeployment[]> {
+    return await db
+      .select()
+      .from(cameraDeployments)
+      .where(
+        and(
+          gte(cameraDeployments.startDate, startDate),
+          lte(cameraDeployments.startDate, endDate)
+        )
+      )
+      .orderBy(desc(cameraDeployments.startDate));
+  }
+
+  async getAllCameraDeployments(): Promise<CameraDeployment[]> {
+    return await db
+      .select()
+      .from(cameraDeployments)
+      .orderBy(desc(cameraDeployments.startDate));
+  }
+
+  async getCurrentDeployments(): Promise<CameraDeployment[]> {
+    return await db
+      .select()
+      .from(cameraDeployments)
+      .where(isNull(cameraDeployments.endDate))
+      .orderBy(desc(cameraDeployments.startDate));
+  }
+
+  async getHistoricalDeployments(): Promise<CameraDeployment[]> {
+    return await db
+      .select()
+      .from(cameraDeployments)
+      .where(eq(cameraDeployments.isActive, false))
+      .orderBy(desc(cameraDeployments.startDate));
+  }
+
+  async endCurrentDeployments(endDate: string): Promise<void> {
+    await db
+      .update(cameraDeployments)
+      .set({ 
+        endDate: endDate,
+        isActive: false 
+      })
+      .where(isNull(cameraDeployments.endDate));
   }
 }
 
