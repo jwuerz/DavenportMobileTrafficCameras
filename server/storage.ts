@@ -26,6 +26,7 @@ export interface IStorage {
 
   // Camera deployment history operations
   createCameraDeployment(deployment: InsertCameraDeployment): Promise<CameraDeployment>;
+  updateCameraDeployment(id: number, updates: Partial<InsertCameraDeployment>): Promise<CameraDeployment | undefined>;
   getCameraDeploymentsByWeek(weekOfYear: string): Promise<CameraDeployment[]>;
   getCameraDeploymentsByDateRange(startDate: string, endDate: string): Promise<CameraDeployment[]>;
   getAllCameraDeployments(): Promise<CameraDeployment[]>;
@@ -133,6 +134,15 @@ export class DatabaseStorage implements IStorage {
       .values(insertDeployment)
       .returning();
     return deployment;
+  }
+
+  async updateCameraDeployment(id: number, updates: Partial<InsertCameraDeployment>): Promise<CameraDeployment | undefined> {
+    const [deployment] = await db
+      .update(cameraDeployments)
+      .set(updates)
+      .where(eq(cameraDeployments.id, id))
+      .returning();
+    return deployment || undefined;
   }
 
   async getCameraDeploymentsByWeek(weekOfYear: string): Promise<CameraDeployment[]> {

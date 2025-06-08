@@ -370,10 +370,21 @@ export class DavenportScraper {
       const currentDeployments = await storage.getCurrentDeployments();
       const currentAddresses = new Set(currentDeployments.map(d => d.address.toLowerCase()));
 
-      // End any existing deployments that are no longer active
-      await storage.endCurrentDeployments(today);
+      // Only end deployments that are no longer in the current locations
+      const currentLocationAddresses = new Set(locations.map(loc => loc.address.toLowerCase()));
+      
+      // End deployments that are no longer active
+      for (const deployment of currentDeployments) {
+        if (!currentLocationAddresses.has(deployment.address.toLowerCase())) {
+          await storage.updateCameraDeployment(deployment.id, {
+            endDate: today,
+            isActive: false
+          });
+          console.log(`Ended deployment for removed location: ${deployment.address}`);
+        }
+      }
 
-      // Create new deployment records only for new locations
+      // Create new deployment records only for truly new locations
       let newDeployments = 0;
       for (const location of locations) {
         // Skip if this location already has an active deployment
