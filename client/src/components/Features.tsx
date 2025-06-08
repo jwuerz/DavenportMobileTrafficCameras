@@ -6,8 +6,8 @@ export default function Features() {
       icon: AlertCircle,
       title: "Real-Time Updates",
       description: "Get notified within minutes when camera locations change on the city website.",
-      iconColor: "text-primary",
-      bgColor: "bg-primary/10"
+      iconColor: "text-blue-600",
+      bgColor: "bg-blue-600/10"
     },
     {
       icon: Shield,
