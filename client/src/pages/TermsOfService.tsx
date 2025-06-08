@@ -202,32 +202,6 @@ export default function TermsOfService() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">
-                If you have questions about these Terms of Service, please contact us:
-              </p>
-              <div className="bg-gray-100 rounded-lg p-4 space-y-2">
-                <p><strong>Email:</strong> legal@davenportcameras.com</p>
-                <p><strong>Subject Line:</strong> Terms of Service Question</p>
-                <p><strong>Response Time:</strong> We aim to respond within 5 business days</p>
-              </div>
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-800 font-semibold mb-2">Official City Information:</p>
-                <p className="text-blue-700">
-                  For questions about camera locations or traffic enforcement policies, contact the 
-                  <a href="https://www.davenportiowa.com/government/departments/police" 
-                     target="_blank" rel="noopener noreferrer" className="underline ml-1">
-                    Davenport Police Department
-                  </a>.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
           <div className="text-center pt-8">
             <p className="text-sm text-gray-500">
               By using Davenport Camera Alerts, you acknowledge that you have read, understood, 
