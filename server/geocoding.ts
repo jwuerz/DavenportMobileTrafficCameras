@@ -16,6 +16,9 @@ export class GeocodingService {
 
   async geocodeAddress(address: string): Promise<GeocodeResult | null> {
     try {
+      // Add delay to respect rate limits (1 request per second)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Clean and format address for Davenport, Iowa
       const cleanAddress = this.formatDavenportAddress(address);
       
@@ -61,15 +64,22 @@ export class GeocodingService {
     // Clean up common address formats from the scraper
     let cleanAddress = address.trim();
     
-    // Handle intersection format (e.g., "5800 Eastern Ave – 1900 Brady St")
-    if (cleanAddress.includes('–') || cleanAddress.includes('-')) {
-      // For intersections, use the format "Street1 and Street2, Davenport, Iowa"
-      const parts = cleanAddress.split(/[–-]/).map(p => p.trim());
+    // Handle intersection format (e.g., "5800 Eastern Ave & 1900 Brady St")
+    if (cleanAddress.includes('&') || cleanAddress.includes('–') || cleanAddress.includes('-')) {
+      // For intersections, try to use the first address with better formatting
+      const parts = cleanAddress.split(/[&–-]/).map(p => p.trim());
       if (parts.length >= 2) {
-        // Extract street names from addresses
-        const street1 = this.extractStreetName(parts[0]);
-        const street2 = this.extractStreetName(parts[1]);
-        cleanAddress = `${street1} and ${street2}`;
+        // Try the first address first, then fall back to intersection format
+        const firstAddress = parts[0].trim();
+        // If first part looks like a complete address, use it
+        if (this.isCompleteAddress(firstAddress)) {
+          cleanAddress = firstAddress;
+        } else {
+          // Use intersection format
+          const street1 = this.extractStreetName(parts[0]);
+          const street2 = this.extractStreetName(parts[1]);
+          cleanAddress = `${street1} and ${street2}`;
+        }
       } else {
         cleanAddress = this.extractStreetName(parts[0]);
       }
@@ -80,7 +90,15 @@ export class GeocodingService {
       cleanAddress += ', Davenport, Iowa, USA';
     }
 
+    console.log(`Formatted address: "${address}" -> "${cleanAddress}"`);
     return cleanAddress;
+  }
+
+  private isCompleteAddress(address: string): boolean {
+    // Check if address contains a number (house number) and street type
+    const hasNumber = /\d+/.test(address);
+    const hasStreetType = /(st|street|ave|avenue|rd|road|blvd|boulevard|way|dr|drive)/i.test(address);
+    return hasNumber && hasStreetType && address.length > 10;
   }
 
   private extractStreetName(addressPart: string): string {

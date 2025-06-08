@@ -394,7 +394,9 @@ export class DavenportScraper {
         }
 
         // Get coordinates for mapping
+        console.log(`Geocoding address: ${location.address}`);
         const geocodeResult = await geocodingService.geocodeAddress(location.address);
+        console.log(`Geocoding result for ${location.address}:`, geocodeResult);
         
         const deployment: InsertCameraDeployment = {
           address: location.address,
@@ -408,6 +410,8 @@ export class DavenportScraper {
           weekOfYear: currentWeek,
           isActive: true
         };
+
+        console.log(`Creating deployment with coordinates: lat=${deployment.latitude}, lng=${deployment.longitude}`);
 
         await storage.createCameraDeployment(deployment);
         newDeployments++;
