@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Calendar, ExternalLink } from "lucide-react";
+import { RefreshCw, Calendar, ExternalLink, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
 
 interface CameraLocation {
   id: number;
@@ -25,24 +26,36 @@ interface Stats {
 
 export default function CurrentLocations() {
   const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: locations, isLoading: locationsLoading, refetch: refetchLocations } = useQuery<CameraLocation[]>({
     queryKey: ["/api/camera-locations"],
+    refetchInterval: isRefreshing ? 2000 : false, // Poll every 2 seconds while refreshing
   });
 
-  const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery<Stats>({
     queryKey: ["/api/stats"],
+    refetchInterval: isRefreshing ? 2000 : false, // Poll every 2 seconds while refreshing
   });
 
   const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      await apiRequest("POST", "/api/refresh-locations");
-      await refetchLocations();
+      const response = await apiRequest("POST", "/api/refresh-locations");
+      
+      // Continue polling for a few seconds to catch any updates
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 5000);
+      
+      await Promise.all([refetchLocations(), refetchStats()]);
+      
       toast({
         title: "Locations Updated",
-        description: "Camera locations have been refreshed successfully.",
+        description: response.hasChanges ? "Camera locations have been refreshed successfully." : "No changes detected.",
       });
     } catch (error) {
+      setIsRefreshing(false);
       toast({
         title: "Refresh Failed",
         description: "Failed to refresh camera locations. Please try again.",
@@ -89,9 +102,15 @@ export default function CurrentLocations() {
           
           {/* Stats Bar */}
           <div className="inline-flex items-center bg-green-600 text-white px-4 py-2 rounded-full text-sm mb-6">
-            <div className="w-2 h-2 bg-white rounded-full mr-2 notification-badge" />
-            {statsLoading ? (
-              <Skeleton className="h-4 w-32" />
+            {isRefreshing ? (
+              <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+            ) : (
+              <div className="w-2 h-2 bg-white rounded-full mr-2 notification-badge" />
+            )}
+            {statsLoading || isRefreshing ? (
+              <span>
+                {isRefreshing ? "Checking for updates..." : "Loading..."}
+              </span>
             ) : (
               <span>
                 Last updated: {stats?.lastUpdate ? formatLastUpdate(stats.lastUpdate) : "Never"}
@@ -113,12 +132,17 @@ export default function CurrentLocations() {
               <div className="stats-card rounded-lg p-4">
                 <Button
                   onClick={handleRefresh}
+                  disabled={isRefreshing}
                   variant="outline"
                   size="sm"
-                  className="text-primary border-primary hover:bg-primary hover:text-white"
+                  className="text-primary border-primary hover:bg-primary hover:text-white disabled:opacity-50"
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Refresh
+                  {isRefreshing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  {isRefreshing ? "Updating..." : "Refresh"}
                 </Button>
               </div>
             </div>
@@ -126,7 +150,7 @@ export default function CurrentLocations() {
         </div>
 
         {/* Locations Grid */}
-        {locationsLoading ? (
+        {locationsLoading || (isRefreshing && !locations) ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <Card key={i} className="camera-card">
@@ -142,28 +166,38 @@ export default function CurrentLocations() {
             ))}
           </div>
         ) : locations && locations.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {locations.map((location) => (
-              <Card key={location.id} className="camera-card border-l-4" style={{ borderLeftColor: getTypeColor(location.type).replace('bg-', '#') }}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900">
-                      {location.address}
-                    </CardTitle>
-                    <Badge className={`${getTypeColor(location.type)} text-white text-xs`}>
-                      {getTypeLabel(location.type)}
-                    </Badge>
-                  </div>
-                  <p className="text-gray-600 text-sm">{location.description}</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    <span>{location.schedule}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="relative">
+            {isRefreshing && (
+              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-lg">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Checking for updates...</p>
+                </div>
+              </div>
+            )}
+            <div className={`grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 ${isRefreshing ? 'opacity-50' : ''}`}>
+              {locations.map((location) => (
+                <Card key={location.id} className="camera-card border-l-4" style={{ borderLeftColor: getTypeColor(location.type).replace('bg-', '#') }}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg font-semibold text-gray-900">
+                        {location.address}
+                      </CardTitle>
+                      <Badge className={`${getTypeColor(location.type)} text-white text-xs`}>
+                        {getTypeLabel(location.type)}
+                      </Badge>
+                    </div>
+                    <p className="text-gray-600 text-sm">{location.description}</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      <span>{location.schedule}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         ) : (
           <Card className="text-center py-12">
