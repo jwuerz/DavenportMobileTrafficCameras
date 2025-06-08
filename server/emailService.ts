@@ -375,7 +375,7 @@ This is an automated notification from an unofficial community service. We are n
     </p>
 
     <div style="text-align: center; margin-bottom: 24px;">
-      <a href="https://www.davenportiowa.com/government/departments/police/automated_traffic_enforcement" 
+      <a href="/#locations" 
          style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
         View Current Locations
       </a>
