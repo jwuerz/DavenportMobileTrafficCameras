@@ -40,32 +40,31 @@ interface DeploymentAnalysis {
 }
 
 export default function DeploymentAnalysis() {
-  const { data: analysis, isLoading } = useQuery<DeploymentAnalysis>({
-    queryKey: ['/api/deployments/analyze']
+  const { data: analysis, isLoading, error } = useQuery<DeploymentAnalysis>({
+    queryKey: ['deployments', 'analyze'],
+    queryFn: () => fetch('/api/deployments/analyze').then(res => res.json())
   });
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const cleanupMutation = useMutation(
-    () => fetch('/api/deployments/cleanup', { method: 'POST' }).then(res => res.json()),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['/api/deployments/analyze'] });
-        toast({
-          title: "Cleanup Successful",
-          description: "Duplicate deployments have been removed.",
-        })
-      },
-      onError: (error) => {
-        toast({
-          variant: "destructive",
-          title: "Cleanup Failed",
-          description: "Failed to remove duplicate deployments.",
-        })
-      }
+  const cleanupMutation = useMutation({
+    mutationFn: () => fetch('/api/deployments/cleanup', { method: 'POST' }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deployments', 'analyze'] });
+      toast({
+        title: "Cleanup Successful",
+        description: "Duplicate deployments have been removed.",
+      })
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Cleanup Failed",
+        description: "Failed to remove duplicate deployments.",
+      })
     }
-  );
+  });
 
 
   if (isLoading) {
@@ -79,12 +78,24 @@ export default function DeploymentAnalysis() {
     );
   }
 
-  if (!analysis) {
+  if (error) {
     return (
       <div className="container mx-auto py-8">
         <div className="text-center text-red-500">
           <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
           <p>Failed to load deployment analysis</p>
+          <p className="text-sm mt-2">{error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!analysis) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="text-center text-red-500">
+          <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+          <p>No data available</p>
         </div>
       </div>
     );
