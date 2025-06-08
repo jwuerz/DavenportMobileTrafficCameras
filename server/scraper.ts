@@ -258,6 +258,9 @@ export class DavenportScraper {
           });
         }
 
+        // Update deployment history
+        await this.saveDeploymentHistory(currentLocations);
+
         // Send notifications to all active users
         await this.notifyUsers(currentLocations);
         
@@ -274,16 +277,37 @@ export class DavenportScraper {
   }
 
   private compareLocations(current: ScrapedLocation[], stored: any[]): boolean {
-    if (current.length !== stored.length) return true;
+    if (current.length !== stored.length) {
+      console.log(`Location count changed: ${stored.length} -> ${current.length}`);
+      return true;
+    }
 
-    const currentAddresses = new Set(current.map(loc => loc.address.toLowerCase()));
-    const storedAddresses = new Set(stored.map(loc => loc.address.toLowerCase()));
+    const currentAddresses = new Set(current.map(loc => loc.address.toLowerCase().trim()));
+    const storedAddresses = new Set(stored.map(loc => loc.address.toLowerCase().trim()));
 
-    if (currentAddresses.size !== storedAddresses.size) return true;
+    if (currentAddresses.size !== storedAddresses.size) {
+      console.log('Address set sizes differ after normalization');
+      return true;
+    }
     
     for (const addr of Array.from(currentAddresses)) {
-      if (!storedAddresses.has(addr)) return true;
+      if (!storedAddresses.has(addr)) {
+        console.log(`New address detected: ${addr}`);
+        return true;
+      }
     }
+    
+    // Also check if schedules have changed
+    const currentSchedules = current.map(loc => `${loc.address.toLowerCase().trim()}:${loc.schedule}`);
+    const storedSchedules = stored.map(loc => `${loc.address.toLowerCase().trim()}:${loc.schedule}`);
+    
+    for (const schedule of currentSchedules) {
+      if (!storedSchedules.includes(schedule)) {
+        console.log(`Schedule changed for: ${schedule}`);
+        return true;
+      }
+    }
+    
     return false;
   }
 
@@ -342,11 +366,22 @@ export class DavenportScraper {
       const today = new Date().toISOString().split('T')[0];
       const currentWeek = this.getWeekOfYear(new Date());
 
-      // End any existing deployments
+      // Get current active deployments to avoid duplicates
+      const currentDeployments = await storage.getCurrentDeployments();
+      const currentAddresses = new Set(currentDeployments.map(d => d.address.toLowerCase()));
+
+      // End any existing deployments that are no longer active
       await storage.endCurrentDeployments(today);
 
-      // Create new deployment records
+      // Create new deployment records only for new locations
+      let newDeployments = 0;
       for (const location of locations) {
+        // Skip if this location already has an active deployment
+        if (currentAddresses.has(location.address.toLowerCase())) {
+          console.log(`Skipping duplicate deployment for: ${location.address}`);
+          continue;
+        }
+
         // Get coordinates for mapping
         const geocodeResult = await geocodingService.geocodeAddress(location.address);
         
@@ -364,9 +399,10 @@ export class DavenportScraper {
         };
 
         await storage.createCameraDeployment(deployment);
+        newDeployments++;
       }
 
-      console.log(`Saved deployment history for ${locations.length} locations`);
+      console.log(`Saved deployment history for ${newDeployments} new locations (${locations.length} total locations)`);
     } catch (error) {
       console.error('Error saving deployment history:', error);
     }
