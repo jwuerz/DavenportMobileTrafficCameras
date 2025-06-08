@@ -228,10 +228,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get historical camera deployments
+  // Get historical camera deployments (all deployments for historical view)
   app.get("/api/deployments/historical", async (req, res) => {
     try {
-      const deployments = await storage.getHistoricalDeployments();
+      const deployments = await storage.getAllCameraDeployments();
       res.json(deployments);
     } catch (error) {
       console.error("Error fetching historical deployments:", error);
