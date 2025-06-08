@@ -84,6 +84,44 @@ export default function SubscriptionManagement() {
     }
   };
 
+  const handleEnablePushNotifications = async () => {
+    if (!subscription) return;
+
+    try {
+      const { notificationService } = await import("@/lib/notificationService");
+      const result = await notificationService.requestPermissionAndGetToken();
+      
+      if (result.granted && result.token) {
+        // Register FCM token with the user
+        await apiRequest("POST", "/api/register-fcm", {
+          email: subscription.email,
+          fcmToken: result.token
+        });
+        
+        // Test the notification
+        await notificationService.testNotification();
+        
+        toast({
+          title: "Push Notifications Enabled",
+          description: "You will now receive push notifications for camera updates.",
+        });
+      } else {
+        toast({
+          title: "Permission Required",
+          description: result.error || "Please allow notifications in your browser settings.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("FCM registration error:", error);
+      toast({
+        title: "Setup Failed",
+        description: "Failed to enable push notifications. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleUnsubscribe = async () => {
     if (!subscription) return;
 

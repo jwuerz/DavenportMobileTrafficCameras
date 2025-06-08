@@ -37,6 +37,7 @@ export default function EmailSubscription() {
     { value: "location_changes", label: "Camera location changes" },
     { value: "new_cameras", label: "New camera installations" },
     { value: "schedule_changes", label: "Camera schedule changes" },
+    { value: "push_notifications", label: "Browser push notifications" },
   ];
 
   const onSubmit = async (data: SubscriptionFormData) => {
@@ -44,23 +45,37 @@ export default function EmailSubscription() {
     try {
       await apiRequest("POST", "/api/subscribe", data);
       
-      // Try to register FCM token for push notifications
-      try {
-        const { notificationService } = await import("@/lib/notificationService");
-        const success = await notificationService.subscribeToNotifications(data.email);
-        if (success) {
+      // Try to register FCM token if user selected push notifications
+      if (data.notificationPreferences.includes('push_notifications')) {
+        try {
+          const { notificationService } = await import("@/lib/notificationService");
+          const result = await notificationService.requestPermissionAndGetToken();
+          
+          if (result.granted && result.token) {
+            // Register FCM token with the user
+            await apiRequest("POST", "/api/register-fcm", {
+              email: data.email,
+              fcmToken: result.token
+            });
+            
+            toast({
+              title: "Subscription Successful!",
+              description: "You will receive email and push notifications when camera locations change.",
+            });
+          } else {
+            toast({
+              title: "Subscription Created",
+              description: "Email notifications enabled. Push notifications require browser permission.",
+            });
+          }
+        } catch (fcmError) {
+          console.log("FCM registration optional:", fcmError);
           toast({
-            title: "Subscription Successful!",
-            description: "You will receive email and push notifications when camera locations change.",
-          });
-        } else {
-          toast({
-            title: "Subscription Successful!",
-            description: "You will receive email notifications. Enable push notifications below for instant alerts.",
+            title: "Subscription Created",
+            description: "Email notifications enabled. Push notification setup failed.",
           });
         }
-      } catch (fcmError) {
-        console.log("FCM registration optional:", fcmError);
+      } else {
         toast({
           title: "Subscription Successful!",
           description: "You will receive email notifications when camera locations change.",
