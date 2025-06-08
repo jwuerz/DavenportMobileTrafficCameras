@@ -17,11 +17,17 @@ interface EmailParams {
   html?: string;
 }
 
-export async function sendEmail(params: EmailParams): Promise<boolean> {
+interface SendEmailResult {
+  success: boolean;
+  message?: string;
+  error?: any;
+}
+
+export async function sendEmail(params: EmailParams): Promise<SendEmailResult> {
   if (!process.env.BREVO_API_KEY) {
     console.log(`[DEVELOPMENT MODE] Email would be sent to ${params.to}: ${params.subject}`);
     console.log(`[DEVELOPMENT MODE] Email content preview: ${params.text?.substring(0, 100)}...`);
-    return true; // Return true for development/testing without API key
+    return { success: true, message: "Email sent in development mode" }; // Return true for development/testing without API key
   }
 
   try {
@@ -53,42 +59,55 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
     if (!response.ok) {
       const errorData = await response.text();
       console.error('Brevo email error:', response.status, errorData);
+      let message = `Brevo email error: ${response.status} - ${errorData}`;
+
       if (response.status === 401) {
         console.error('Brevo API authentication failed. Please verify your API key is correct and active.');
-        console.log(`[FALLBACK MODE] Email would be sent to ${params.to}: ${params.subject}`);
-        return true; // Graceful fallback during key setup
+        message = 'Brevo API authentication failed. Please verify your API key is correct and active.';
+      } else if (response.status === 400) {
+        console.error('Brevo API request error.  Check your FROM email.');
+        message = 'Brevo API request error. Check your FROM email.';
+      } else if (response.status === 403) {
+          console.error('Brevo API forbidden. Check your account and permissions.');
+          message = 'Brevo API forbidden. Check your account and permissions.  Have you validated your sending domain?';
       }
-      return false;
+
+      return { success: false, error: { status: response.status, message: message } };
     }
 
     const result = await response.json();
     console.log('Email sent successfully via Brevo:', result.messageId);
-    return true;
-  } catch (error) {
+    return { success: true, message: 'Email sent successfully', result };
+  } catch (error: any) {
     console.error('Brevo email error:', error);
-    console.log(`[FALLBACK MODE] Email would be sent to ${params.to}: ${params.subject}`);
-    return true; // Graceful fallback for network issues
+    return { success: false, error: { message: error.message || 'An unexpected error occurred' } };
   }
 }
 
 export async function sendCameraUpdateNotification(
   userEmail: string, 
   locations: ScrapedLocation[]
-): Promise<boolean> {
+): Promise<SendEmailResult> {
   const fromEmail = process.env.FROM_EMAIL || 'notifications@davenportcameraalerts.com';
-  
+
   const subject = `Davenport Camera Locations Updated - ${locations.length} Locations This Week`;
-  
+
   const textContent = generateTextEmailContent(locations);
   const htmlContent = generateHtmlEmailContent(locations);
 
-  return await sendEmail({
+  const emailResult = await sendEmail({
     to: userEmail,
     from: fromEmail,
     subject,
     text: textContent,
     html: htmlContent,
   });
+
+  if (!emailResult.success) {
+      console.error("Failed to send camera update notification:", emailResult.error);
+  }
+
+  return emailResult;
 }
 
 function generateTextEmailContent(locations: ScrapedLocation[]): string {
@@ -127,7 +146,7 @@ function generateHtmlEmailContent(locations: ScrapedLocation[]): string {
   const locationRows = locations.map((location, index) => {
     const typeColor = getTypeColor(location.type);
     const typeBadge = getTypeLabel(location.type);
-    
+
     return `
       <tr style="border-bottom: 1px solid #e5e7eb;">
         <td style="padding: 16px 8px; text-align: center; font-weight: 600; color: #374151;">
@@ -162,7 +181,7 @@ function generateHtmlEmailContent(locations: ScrapedLocation[]): string {
   <title>Davenport Camera Locations Updated</title>
 </head>
 <body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-  
+
   <!-- Header -->
   <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
     <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
@@ -176,7 +195,7 @@ function generateHtmlEmailContent(locations: ScrapedLocation[]): string {
 
   <!-- Content -->
   <div style="background: white; padding: 24px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-    
+
     <!-- Alert Banner -->
     <div style="background-color: #dbeafe; border: 1px solid #93c5fd; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
       <div style="display: flex; align-items: flex-start;">
@@ -275,7 +294,7 @@ function getTypeLabel(type: string): string {
   }
 }
 
-export async function sendTestNotification(userEmail: string): Promise<boolean> {
+export async function sendTestNotification(userEmail: string): Promise<SendEmailResult> {
   const testLocations: ScrapedLocation[] = [
     {
       address: "53rd & Eastern Ave",
@@ -294,11 +313,11 @@ export async function sendTestNotification(userEmail: string): Promise<boolean> 
   return await sendCameraUpdateNotification(userEmail, testLocations);
 }
 
-export async function sendWelcomeEmail(userEmail: string): Promise<boolean> {
+export async function sendWelcomeEmail(userEmail: string): Promise<SendEmailResult> {
   const fromEmail = process.env.FROM_EMAIL || 'notifications@davenportcameraalerts.com';
-  
+
   const subject = "Welcome to Davenport Camera Alerts!";
-  
+
   const textContent = `
 Welcome to Davenport Camera Alerts!
 
@@ -330,14 +349,14 @@ This is an automated notification from an unofficial community service. We are n
   <title>Welcome to Davenport Camera Alerts</title>
 </head>
 <body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-  
+
   <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 32px; border-radius: 12px; text-align: center; margin-bottom: 24px;">
     <h1 style="margin: 0 0 16px 0; font-size: 28px; font-weight: 700;">Welcome to Davenport Camera Alerts!</h1>
     <p style="margin: 0; font-size: 18px; opacity: 0.9;">Your subscription is now active</p>
   </div>
 
   <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-    
+
     <div style="background-color: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
       <p style="margin: 0; color: #065f46; font-weight: 600;">
         ✅ Subscription Confirmed! You will now receive email alerts whenever mobile traffic camera locations change.

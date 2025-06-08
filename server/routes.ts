@@ -178,41 +178,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test Brevo email integration
-  app.post('/api/test-email', async (req, res) => {
-    try {
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-      }
+  // Test welcome email endpoint
+  app.post('/api/test-welcome-email', async (req, res) => {
+    const { email } = req.body;
 
-      const result = await sendTestNotification(email);
-      if (result) {
-        res.json({ message: 'Test email sent successfully' });
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+
+    try {
+      const result = await sendWelcomeEmail(email);
+      if (result.success) {
+        res.json({ message: 'Test welcome email sent successfully' });
       } else {
-        res.status(500).json({ error: 'Failed to send test email' });
+        res.status(500).json({ error: result.error || 'Failed to send welcome email' });
       }
     } catch (error) {
-      console.error('Test email error:', error);
+      console.error('Welcome email test error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
 
-  app.post('/api/test-welcome-email', async (req, res) => {
-    try {
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-      }
+  // Test camera update email endpoint
+  app.post('/api/test-email', async (req, res) => {
+    const { email } = req.body;
 
-      const result = await sendWelcomeEmail(email);
-      if (result) {
-        res.json({ message: 'Test welcome email sent successfully' });
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+
+    try {
+      const result = await sendTestNotification(email);
+      if (result.success) {
+        res.json({ message: 'Test email sent successfully' });
       } else {
-        res.status(500).json({ error: 'Failed to send test welcome email' });
+        res.status(500).json({ error: result.error || 'Failed to send test email' });
       }
     } catch (error) {
-      console.error('Test welcome email error:', error);
+      console.error('Test email error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -286,7 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allDeployments = await storage.getAllCameraDeployments();
       const currentDeployments = await storage.getCurrentDeployments();
-      
+
       // Group by address to find duplicates
       const groupedByAddress = allDeployments.reduce((acc, deployment) => {
         const normalizedAddress = deployment.address.toLowerCase().trim();
@@ -370,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/deployments/cleanup", async (req, res) => {
     try {
       const allDeployments = await storage.getAllCameraDeployments();
-      
+
       // Group by normalized address
       const groupedByAddress = allDeployments.reduce((acc, deployment) => {
         const normalizedAddress = deployment.address.toLowerCase().trim();
@@ -389,27 +392,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (deployments.length > 1) {
           // Sort by start date (most recent first)
           deployments.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-          
+
           // Keep the first (most recent) deployment, mark others for deletion
           const toKeep = deployments[0];
           const toDelete = deployments.slice(1);
-          
+
           console.log(`Address: ${address}`);
           console.log(`Keeping deployment ID ${toKeep.id} from ${toKeep.startDate}`);
           console.log(`Removing ${toDelete.length} duplicate(s)`);
-          
+
           // Ensure the kept deployment is marked as active
           await storage.updateCameraDeployment(toKeep.id, {
             isActive: true,
             endDate: null
           });
-          
+
           // Delete duplicates using the storage method
           for (const duplicate of toDelete) {
             await storage.deleteCameraDeployment(duplicate.id);
             cleanedCount++;
           }
-          
+
           keptCount++;
         } else {
           // Ensure single deployments are also marked as active
@@ -437,10 +440,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/deployments/cleanup-historical", async (req, res) => {
     try {
       console.log('Cleaning up duplicate historical deployments...');
-      
+
       // Only get historical (inactive) deployments
       const historicalDeployments = await storage.getHistoricalDeployments();
-      
+
       // Group by address
       const groupedByAddress = historicalDeployments.reduce((acc, deployment) => {
         const normalizedAddress = deployment.address.toLowerCase().trim();
@@ -459,19 +462,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (deployments.length > 1) {
           // Sort by start date (most recent first)
           deployments.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-          
+
           // Keep the first (most recent), delete others
           const toKeep = deployments[0];
           const toDelete = deployments.slice(1);
-          
+
           console.log(`Historical cleanup - keeping deployment ID ${toKeep.id} from ${toKeep.startDate}, removing ${toDelete.length} older duplicate(s)`);
-          
+
           // Delete duplicates
           for (const duplicate of toDelete) {
             await storage.deleteCameraDeployment(duplicate.id);
             cleanedCount++;
           }
-          
+
           keptCount++;
         } else {
           keptCount++;
@@ -493,23 +496,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/deployments/force-refresh", async (req, res) => {
     try {
       console.log('Starting force refresh - clearing all deployments and rescaping...');
-      
+
       // Clear all existing camera locations and deployments
       await storage.clearAllCameraLocations();
       await storage.clearHistoricalDeployments();
-      
+
       console.log('Cleared all existing data, starting fresh scrape...');
-      
+
       // Force rescrape and reinitialize
       const { scraper } = await import('./scraper');
       await scraper.initializeLocations();
-      
+
       // Get the fresh data
       const newLocations = await storage.getActiveCameraLocations();
       const newDeployments = await storage.getCurrentDeployments();
-      
+
       console.log(`Force refresh completed. Created ${newLocations.length} locations and ${newDeployments.length} deployments.`);
-      
+
       res.json({ 
         message: `Force refresh completed successfully. Created ${newLocations.length} locations and ${newDeployments.length} deployments.`,
         locations: newLocations.length,

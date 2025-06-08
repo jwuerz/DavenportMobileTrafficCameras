@@ -119,18 +119,27 @@ export default function TestPage() {
         body: JSON.stringify({ email: testEmail }),
       });
 
+      const responseData = await response.json();
+
       if (response.ok) {
         toast({
           title: "Welcome Email Sent",
           description: `Test welcome email sent to ${testEmail}`,
         });
       } else {
-        throw new Error("Failed to send email");
+        const errorMessage = responseData.error || responseData.message || "Unknown error occurred";
+        console.error("Email test error:", responseData);
+        toast({
+          title: "Email Test Failed",
+          description: `Error: ${errorMessage}`,
+          variant: "destructive",
+        });
       }
     } catch (error) {
+      console.error("Network error:", error);
       toast({
         title: "Email Test Failed",
-        description: "Failed to send test email. Check console for details.",
+        description: `Network error: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -158,18 +167,27 @@ export default function TestPage() {
         body: JSON.stringify({ email: testEmail }),
       });
 
+      const responseData = await response.json();
+
       if (response.ok) {
         toast({
           title: "Camera Update Email Sent",
           description: `Test camera update email sent to ${testEmail}`,
         });
       } else {
-        throw new Error("Failed to send email");
+        const errorMessage = responseData.error || responseData.message || "Unknown error occurred";
+        console.error("Email test error:", responseData);
+        toast({
+          title: "Email Test Failed",
+          description: `Error: ${errorMessage}`,
+          variant: "destructive",
+        });
       }
     } catch (error) {
+      console.error("Network error:", error);
       toast({
         title: "Email Test Failed",
-        description: "Failed to send test email. Check console for details.",
+        description: `Network error: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -291,6 +309,37 @@ export default function TestPage() {
                 <span className="ml-2 text-gray-600">
                   {process.env.NODE_ENV === "development" ? "Development Mode" : "Production"}
                 </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Email Configuration Help */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Mail className="h-5 w-5 mr-2 text-yellow-600" />
+              Email Configuration Help
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <h4 className="font-medium text-yellow-800 mb-2">Common Email Issues:</h4>
+                <ul className="space-y-1 text-yellow-700">
+                  <li>• <strong>Domain validation:</strong> Make sure your FROM_EMAIL domain is verified in Brevo</li>
+                  <li>• <strong>API key:</strong> Verify BREVO_API_KEY is set and active in your Secrets</li>
+                  <li>• <strong>Sender reputation:</strong> New domains may have sending limitations</li>
+                </ul>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <h4 className="font-medium text-blue-800 mb-2">To fix domain issues:</h4>
+                <ol className="space-y-1 text-blue-700">
+                  <li>1. Go to your Brevo dashboard → Senders, Domains & Dedicated IPs</li>
+                  <li>2. Add and verify your domain (e.g., davenportcameraalerts.com)</li>
+                  <li>3. Update FROM_EMAIL environment variable to use verified domain</li>
+                  <li>4. For testing, use noreply@yourdomain.com format</li>
+                </ol>
               </div>
             </div>
           </CardContent>
