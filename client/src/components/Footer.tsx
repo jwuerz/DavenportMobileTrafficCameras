@@ -49,7 +49,7 @@ export default function Footer() {
             <h5 className="font-semibold mb-4">Contact & Legal</h5>
             <ul className="space-y-2 text-gray-300">
               <li>
-                <a href="#terms" className="hover:text-white transition-colors">
+                <a href="/terms" className="hover:text-white transition-colors">
                   Terms of Service
                 </a>
               </li>
