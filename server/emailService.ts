@@ -88,7 +88,7 @@ export async function sendCameraUpdateNotification(
   userEmail: string, 
   locations: ScrapedLocation[]
 ): Promise<SendEmailResult> {
-  const fromEmail = process.env.FROM_EMAIL || 'notifications@davenportcameraalerts.com';
+  const fromEmail = process.env.FROM_EMAIL || 'davcamalerts@charitable.tech';
 
   const subject = `Davenport Camera Locations Updated - ${locations.length} Locations This Week`;
 
@@ -314,7 +314,7 @@ export async function sendTestNotification(userEmail: string): Promise<SendEmail
 }
 
 export async function sendWelcomeEmail(userEmail: string): Promise<SendEmailResult> {
-  const fromEmail = process.env.FROM_EMAIL || 'notifications@davenportcameraalerts.com';
+  const fromEmail = process.env.FROM_EMAIL || 'davcamalerts@charitable.tech';
 
   const subject = "Welcome to Davenport Camera Alerts!";
 
