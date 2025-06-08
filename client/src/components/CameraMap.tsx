@@ -188,7 +188,7 @@ export default function CameraMap() {
                   All Overlaid
                 </Button>
               </div>
-            )}</TabsList>
+            )}
 
             {selectedTab === 'range' && (
               <div className={`flex gap-4 items-center ${isMobile ? 'flex-col' : 'flex-row'}`}>
