@@ -433,6 +433,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clean up duplicate historical deployments only (preserves current active deployments)
+  app.post("/api/deployments/cleanup-historical", async (req, res) => {
+    try {
+      console.log('Cleaning up duplicate historical deployments...');
+      
+      // Only get historical (inactive) deployments
+      const historicalDeployments = await storage.getHistoricalDeployments();
+      
+      // Group by address
+      const groupedByAddress = historicalDeployments.reduce((acc, deployment) => {
+        const normalizedAddress = deployment.address.toLowerCase().trim();
+        if (!acc[normalizedAddress]) {
+          acc[normalizedAddress] = [];
+        }
+        acc[normalizedAddress].push(deployment);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      let cleanedCount = 0;
+      let keptCount = 0;
+
+      // For each address group, keep only the most recent historical deployment
+      for (const [address, deployments] of Object.entries(groupedByAddress)) {
+        if (deployments.length > 1) {
+          // Sort by start date (most recent first)
+          deployments.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+          
+          // Keep the first (most recent), delete others
+          const toKeep = deployments[0];
+          const toDelete = deployments.slice(1);
+          
+          console.log(`Historical cleanup - keeping deployment ID ${toKeep.id} from ${toKeep.startDate}, removing ${toDelete.length} older duplicate(s)`);
+          
+          // Delete duplicates
+          for (const duplicate of toDelete) {
+            await storage.deleteCameraDeployment(duplicate.id);
+            cleanedCount++;
+          }
+          
+          keptCount++;
+        } else {
+          keptCount++;
+        }
+      }
+
+      res.json({ 
+        message: `Historical cleanup completed. Removed ${cleanedCount} duplicate historical deployments, kept ${keptCount} unique historical records. Current active deployments were not affected.`,
+        removed: cleanedCount,
+        kept: keptCount
+      });
+    } catch (error) {
+      console.error("Error cleaning historical duplicates:", error);
+      res.status(500).json({ message: "Failed to clean historical duplicates" });
+    }
+  });
+
   // Force refresh - clear all deployments and rescrape
   app.post("/api/deployments/force-refresh", async (req, res) => {
     try {
