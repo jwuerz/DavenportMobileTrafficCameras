@@ -298,7 +298,7 @@ function getTypeLabel(type: string): string {
 
 export async function sendTestNotification(userEmail: string): Promise<SendEmailResult> {
   // Get actual current locations from the database
-  const currentLocations = await storage.getCurrentCameraLocations();
+  const currentLocations = await storage.getActiveCameraLocations();
   
   // Convert database format to ScrapedLocation format for email
   const testLocations: ScrapedLocation[] = currentLocations.map(location => ({
