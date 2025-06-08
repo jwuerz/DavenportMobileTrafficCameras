@@ -166,6 +166,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update coordinates for existing deployments
+  app.post("/api/update-coordinates", async (req, res) => {
+    try {
+      const { updateDeploymentCoordinates } = await import('./updateCoordinates');
+      await updateDeploymentCoordinates();
+      res.json({ message: "Coordinates updated successfully" });
+    } catch (error) {
+      console.error('Error updating coordinates:', error);
+      res.status(500).json({ error: "Failed to update coordinates" });
+    }
+  });
+
   // Test Brevo email integration
   app.post('/api/test-email', async (req, res) => {
     try {
