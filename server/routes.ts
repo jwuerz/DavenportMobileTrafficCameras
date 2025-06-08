@@ -192,6 +192,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register FCM token for user
+  app.post('/api/register-fcm', async (req, res) => {
+    const { email, fcmToken } = req.body;
+
+    if (!email || !fcmToken) {
+      return res.status(400).json({ error: 'Email and FCM token are required' });
+    }
+
+    try {
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const updatedUser = await storage.updateUser(user.id, { fcmToken });
+      res.json({ 
+        message: 'FCM token registered successfully',
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error('FCM token registration error:', error);
+      res.status(500).json({ error: 'Failed to register FCM token' });
+    }
+  });
+
+  // Test FCM notification endpoint
+  app.post('/api/test-fcm', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+
+    try {
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (!user.fcmToken) {
+        return res.status(400).json({ message: 'User has no FCM token registered' });
+      }
+
+      const result = await fcmService.testNotification(user.fcmToken);
+      if (result.success) {
+        res.json({ message: 'Test FCM notification sent successfully' });
+      } else {
+        res.status(500).json({ error: result.error || 'Failed to send FCM notification' });
+      }
+    } catch (error) {
+      console.error('Test FCM error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get FCM service status
+  app.get('/api/fcm-status', async (req, res) => {
+    try {
+      const users = await storage.getAllActiveUsers();
+      const usersWithTokens = users.filter(user => user.fcmToken).length;
+      
+      res.json({
+        configured: fcmService.isConfigured(),
+        totalUsers: users.length,
+        usersWithTokens,
+        mode: process.env.NODE_ENV || 'development'
+      });
+    } catch (error) {
+      console.error('FCM status error:', error);
+      res.status(500).json({ error: 'Failed to get FCM status' });
+    }
+  });
+
   // Test welcome email endpoint
   app.post('/api/test-welcome-email', async (req, res) => {
     const { email } = req.body;
