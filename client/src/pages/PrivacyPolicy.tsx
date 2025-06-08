@@ -212,29 +212,6 @@ export default function PrivacyPolicy() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact Us</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 mb-4">
-                If you have any questions about this Privacy Policy or how we handle your data, please contact us:
-              </p>
-              <div className="bg-gray-100 rounded-lg p-4 space-y-2">
-                <p><strong>Email:</strong> privacy@davenportcameras.com</p>
-                <p><strong>Subject Line:</strong> Privacy Policy Question</p>
-                <p><strong>Response Time:</strong> We aim to respond within 48 hours</p>
-              </div>
-              <p className="text-sm text-gray-500 mt-4">
-                For general questions about camera locations, please visit the 
-                <a href="https://www.davenportiowa.com/government/departments/police/automated_traffic_enforcement" 
-                   target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">
-                  official Davenport city website
-                </a>.
-              </p>
-            </CardContent>
-          </Card>
-
           <div className="text-center pt-8">
             <p className="text-sm text-gray-500">
               This privacy policy is effective as of {new Date().toLocaleDateString()} and applies to all 
