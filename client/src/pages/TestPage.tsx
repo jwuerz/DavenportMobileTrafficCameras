@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, Mail, TestTube } from "lucide-react";
+import NotificationGuide from "@/components/NotificationGuide";
 
 export default function TestPage() {
   const [testEmail, setTestEmail] = useState("");
@@ -54,7 +54,7 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   const testChromeNotification = async () => {
     console.log("Chrome notification button clicked");
@@ -94,58 +94,35 @@ export default function TestPage() {
         return;
       }
 
-      // Try service worker notification first
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.ready;
-          if (registration && registration.showNotification) {
-            await registration.showNotification("🚦 Camera Locations Updated!", {
-              body: "5 new camera locations detected for this week. Click to view details.",
-              icon: "/favicon.ico",
-              tag: "camera-update",
-              requireInteraction: false,
-              badge: "/favicon.ico"
-            });
-            toast({
-              title: "Service Worker Notification Sent",
-              description: "Check your browser for the camera update notification.",
-            });
-            return;
-          }
-        } catch (swError) {
-          console.log("Service worker notification failed:", swError);
-        }
-      }
-
-      // Fallback to direct Notification constructor
-      const notification = new Notification("🚦 Camera Locations Updated!", {
-        body: "5 new camera locations detected for this week. Click to view details.",
+      // Show test notification
+      const notification = new Notification("🚦 Test Notification", {
+        body: "Chrome notifications are working!",
         icon: "/favicon.ico",
-        tag: "camera-update"
+        tag: "test-notification"
       });
 
-      notification.onclick = function() {
+      notification.onclick = () => {
         window.focus();
         notification.close();
       };
 
       toast({
-        title: "Direct Notification Sent",
-        description: "Check your browser for the camera update notification.",
+        title: "Chrome Notifications Working",
+        description: "Test notification sent successfully.",
       });
 
     } catch (error) {
-      console.error("Notification error:", error);
+      console.error("Chrome notification error:", error);
       toast({
-        title: "Notification Failed",
-        description: `Error: ${error.message}. This may work better in production.`,
+        title: "Chrome Notification Failed",
+        description: "Check browser permissions and try again.",
         variant: "destructive",
       });
     }
   };
 
-  const testWelcomeEmail = async () => {
-    if (!testEmail) {
+  const sendTestEmail = async () => {
+    if (!testEmail.trim()) {
       toast({
         title: "Email Required",
         description: "Please enter an email address to test.",
@@ -155,36 +132,32 @@ export default function TestPage() {
     }
 
     setIsLoading(true);
+
     try {
-      const response = await fetch("/api/test-welcome-email", {
+      const response = await fetch("/api/test-email", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: testEmail }),
       });
 
-      const responseData = await response.json();
-
       if (response.ok) {
         toast({
-          title: "Welcome Email Sent",
-          description: `Test welcome email sent to ${testEmail}`,
+          title: "Email Sent",
+          description: `Test email sent to ${testEmail}`,
         });
       } else {
-        const errorMessage = responseData.error || responseData.message || "Unknown error occurred";
-        console.error("Email test error:", responseData);
+        const errorData = await response.json();
         toast({
-          title: "Email Test Failed",
-          description: `Error: ${errorMessage}`,
+          title: "Email Failed",
+          description: errorData.message || "Failed to send test email",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error("Network error:", error);
+      console.error("Email test error:", error);
       toast({
-        title: "Email Test Failed",
-        description: `Network error: ${error.message}`,
+        title: "Email Error",
+        description: "Network error while sending test email.",
         variant: "destructive",
       });
     } finally {
@@ -192,8 +165,8 @@ export default function TestPage() {
     }
   };
 
-  const testCameraUpdateEmail = async () => {
-    if (!testEmail) {
+  const sendWelcomeEmail = async () => {
+    if (!testEmail.trim()) {
       toast({
         title: "Email Required",
         description: "Please enter an email address to test.",
@@ -203,36 +176,76 @@ export default function TestPage() {
     }
 
     setIsLoading(true);
+
     try {
-      const response = await fetch("/api/test-email", {
+      const response = await fetch("/api/test-welcome", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: testEmail }),
       });
 
-      const responseData = await response.json();
-
       if (response.ok) {
         toast({
-          title: "Camera Update Email Sent",
-          description: `Test camera update email sent to ${testEmail}`,
+          title: "Welcome Email Sent",
+          description: `Welcome email sent to ${testEmail}`,
         });
       } else {
-        const errorMessage = responseData.error || responseData.message || "Unknown error occurred";
-        console.error("Email test error:", responseData);
+        const errorData = await response.json();
         toast({
-          title: "Email Test Failed",
-          description: `Error: ${errorMessage}`,
+          title: "Welcome Email Failed",
+          description: errorData.message || "Failed to send welcome email",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error("Network error:", error);
+      console.error("Welcome email test error:", error);
       toast({
-        title: "Email Test Failed",
-        description: `Network error: ${error.message}`,
+        title: "Welcome Email Error",
+        description: "Network error while sending welcome email.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const sendCameraUpdateEmail = async () => {
+    if (!testEmail.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter an email address to test.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/test-camera-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: testEmail }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Camera Update Email Sent",
+          description: `Camera update email sent to ${testEmail}`,
+        });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Camera Update Failed",
+          description: errorData.message || "Failed to send camera update email",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Camera update email test error:", error);
+      toast({
+        title: "Camera Update Error",
+        description: "Network error while sending camera update email.",
         variant: "destructive",
       });
     } finally {
@@ -248,155 +261,90 @@ export default function TestPage() {
             <TestTube className="h-8 w-8 text-blue-600 mr-2" />
             <h1 className="text-3xl font-bold text-gray-900">Test Page</h1>
           </div>
-          <p className="text-gray-600">Test Chrome notifications and email functionality</p>
+          <p className="text-gray-600">Test notifications and email functionality</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Firebase Push Notifications Test */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Bell className="h-5 w-5 mr-2 text-blue-600" />
-                Firebase Push Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Test Firebase push notification functionality. This will request permission and register for real-time notifications.
-              </p>
-              <Button 
-                onClick={testFirebaseNotification}
-                className="w-full"
-                type="button"
-              >
-                Test Firebase Notification
-              </Button>
-              <Button 
-                onClick={() => {
-                  console.log("Legacy notification button clicked!");
-                  testChromeNotification();
-                }} 
-                variant="outline"
-                className="w-full"
-                type="button"
-              >
-                Test Legacy Browser Notification
-              </Button>
-              <div className="text-xs text-gray-500">
-                Firebase notifications work across devices and browsers, even when the page is closed.
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Email Tests */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Mail className="h-5 w-5 mr-2 text-green-600" />
-                Email Tests
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label htmlFor="testEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                  Test Email Address
-                </label>
-                <Input
-                  id="testEmail"
-                  type="email"
-                  value={testEmail}
-                  onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="Enter email to test..."
-                  className="mb-4"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Button 
-                  onClick={testWelcomeEmail} 
-                  disabled={isLoading || !testEmail}
-                  className="w-full"
-                  variant="outline"
-                >
-                  Test Welcome Email
-                </Button>
+        <div className="grid gap-6">
+          {/* Notification Setup Guide */}
+          <div className="flex justify-center">
+            <NotificationGuide />
+          </div>
+          
+          <div className="grid gap-6 md:grid-cols-1">
+            {/* Email Tests */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Mail className="h-5 w-5 mr-2 text-green-600" />
+                  Email Tests
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label htmlFor="testEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                    Test Email Address
+                  </label>
+                  <Input
+                    id="testEmail"
+                    type="email"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                    placeholder="Enter email address"
+                    className="w-full"
+                  />
+                </div>
                 
-                <Button 
-                  onClick={testCameraUpdateEmail} 
-                  disabled={isLoading || !testEmail}
-                  className="w-full"
-                  variant="outline"
-                >
-                  Test Camera Update Email
-                </Button>
-              </div>
-              
-              <div className="text-xs text-gray-500">
-                Note: Emails will be sent using your configured email service (Brevo).
-              </div>
-            </CardContent>
-          </Card>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Button 
+                    onClick={sendTestEmail}
+                    disabled={isLoading || !testEmail.trim()}
+                    className="w-full"
+                  >
+                    Send Test Email
+                  </Button>
+                  
+                  <Button 
+                    onClick={sendWelcomeEmail}
+                    disabled={isLoading || !testEmail.trim()}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Send Welcome Email
+                  </Button>
+                  
+                  <Button 
+                    onClick={sendCameraUpdateEmail}
+                    disabled={isLoading || !testEmail.trim()}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Send Camera Update
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 text-sm">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <h4 className="font-medium text-yellow-800 mb-2">Common Email Issues:</h4>
+                    <ul className="space-y-1 text-yellow-700">
+                      <li>• <strong>Domain validation:</strong> Make sure your FROM_EMAIL domain is verified in Brevo</li>
+                      <li>• <strong>API key:</strong> Verify BREVO_API_KEY is set and active in your Secrets</li>
+                      <li>• <strong>Sender reputation:</strong> New domains may have sending limitations</li>
+                    </ul>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="font-medium text-blue-800 mb-2">To fix domain issues:</h4>
+                    <ol className="space-y-1 text-blue-700">
+                      <li>1. Go to your Brevo dashboard → Senders, Domains & Dedicated IPs</li>
+                      <li>2. Add and verify your domain (e.g., davenportcameraalerts.com)</li>
+                      <li>3. Update FROM_EMAIL environment variable to use verified domain</li>
+                      <li>4. For testing, use noreply@yourdomain.com format</li>
+                    </ol>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-
-        {/* API Status */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Current Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Chrome Notifications:</span>
-                <span className="ml-2 text-gray-600">
-                  {"Notification" in window ? "Supported" : "Not Supported"}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium">Notification Permission:</span>
-                <span className="ml-2 text-gray-600">
-                  {"Notification" in window ? Notification.permission : "N/A"}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium">Email Service:</span>
-                <span className="ml-2 text-gray-600">
-                  {process.env.NODE_ENV === "development" ? "Development Mode" : "Production"}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Email Configuration Help */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Mail className="h-5 w-5 mr-2 text-yellow-600" />
-              Email Configuration Help
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <h4 className="font-medium text-yellow-800 mb-2">Common Email Issues:</h4>
-                <ul className="space-y-1 text-yellow-700">
-                  <li>• <strong>Domain validation:</strong> Make sure your FROM_EMAIL domain is verified in Brevo</li>
-                  <li>• <strong>API key:</strong> Verify BREVO_API_KEY is set and active in your Secrets</li>
-                  <li>• <strong>Sender reputation:</strong> New domains may have sending limitations</li>
-                </ul>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <h4 className="font-medium text-blue-800 mb-2">To fix domain issues:</h4>
-                <ol className="space-y-1 text-blue-700">
-                  <li>1. Go to your Brevo dashboard → Senders, Domains & Dedicated IPs</li>
-                  <li>2. Add and verify your domain (e.g., davenportcameraalerts.com)</li>
-                  <li>3. Update FROM_EMAIL environment variable to use verified domain</li>
-                  <li>4. For testing, use noreply@yourdomain.com format</li>
-                </ol>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         <div className="mt-8 text-center">
           <a href="/" className="text-blue-600 hover:text-blue-800 underline">
