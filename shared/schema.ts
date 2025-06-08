@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   isActive: boolean("is_active").notNull().default(true),
   notificationPreferences: json("notification_preferences").$type<string[]>().notNull().default(['email']),
+  fcmToken: text("fcm_token"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -1,0 +1,221 @@
+import { initializeFirebase, requestNotificationPermission, getFirebaseToken, onMessageReceived } from './firebase';
+import { useToast } from '@/hooks/use-toast';
+
+export interface NotificationPermissionResult {
+  granted: boolean;
+  token?: string;
+  error?: string;
+}
+
+export class NotificationService {
+  private messaging: any = null;
+  private token: string | null = null;
+  private initialized: boolean = false;
+
+  async initialize(): Promise<boolean> {
+    try {
+      this.messaging = await initializeFirebase();
+      if (this.messaging) {
+        this.setupForegroundListener();
+        this.initialized = true;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to initialize notification service:', error);
+      return false;
+    }
+  }
+
+  async requestPermissionAndGetToken(): Promise<NotificationPermissionResult> {
+    try {
+      if (!this.initialized) {
+        const initialized = await this.initialize();
+        if (!initialized) {
+          return { 
+            granted: false, 
+            error: 'Firebase messaging not supported or configured' 
+          };
+        }
+      }
+
+      const permissionGranted = await requestNotificationPermission();
+      if (!permissionGranted) {
+        return { 
+          granted: false, 
+          error: 'Notification permission denied' 
+        };
+      }
+
+      const token = await getFirebaseToken();
+      if (token) {
+        this.token = token;
+        return { granted: true, token };
+      } else {
+        return { 
+          granted: true, 
+          error: 'Failed to get FCM token' 
+        };
+      }
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      return { 
+        granted: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
+  async subscribeToNotifications(userEmail: string): Promise<boolean> {
+    try {
+      const result = await this.requestPermissionAndGetToken();
+      
+      if (!result.granted || !result.token) {
+        console.error('Cannot subscribe without valid token:', result.error);
+        return false;
+      }
+
+      // Send token to backend to associate with user
+      const response = await fetch('/api/fcm-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          fcmToken: result.token
+        })
+      });
+
+      if (response.ok) {
+        console.log('FCM token registered successfully');
+        return true;
+      } else {
+        console.error('Failed to register FCM token');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error subscribing to notifications:', error);
+      return false;
+    }
+  }
+
+  private setupForegroundListener() {
+    if (!this.messaging) return;
+
+    // Handle messages when app is in foreground
+    onMessageReceived((payload) => {
+      console.log('Foreground message received:', payload);
+      
+      // Show toast notification for foreground messages
+      const title = payload.notification?.title || 'Camera Location Update';
+      const body = payload.notification?.body || 'Camera locations have been updated';
+      
+      // Create a custom notification toast or use browser notification
+      this.showForegroundNotification(title, body);
+    });
+  }
+
+  private showForegroundNotification(title: string, body: string) {
+    // For foreground notifications, we can show a toast or custom notification
+    // This will be handled by the component using the service
+    console.log('Showing foreground notification:', title, body);
+    
+    // If browser notification API is available, show notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+        tag: 'camera-update-foreground'
+      });
+    }
+  }
+
+  getToken(): string | null {
+    return this.token;
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  // Test notification functionality
+  async testNotification(): Promise<boolean> {
+    try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const notification = new Notification('🚦 Test Notification', {
+          body: 'Firebase push notifications are working correctly!',
+          icon: '/favicon.ico',
+          tag: 'test-notification'
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error testing notification:', error);
+      return false;
+    }
+  }
+}
+
+// Create singleton instance
+export const notificationService = new NotificationService();
+
+// Legacy Chrome notification support (fallback)
+export const requestChromeNotificationPermission = async (): Promise<boolean> => {
+  if (!('Notification' in window)) {
+    console.log('Browser does not support notifications');
+    return false;
+  }
+
+  if (Notification.permission === 'granted') {
+    return true;
+  }
+
+  if (Notification.permission === 'denied') {
+    console.log('Notifications are blocked');
+    return false;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
+  }
+};
+
+export const showChromeNotification = (title: string, body: string): boolean => {
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    return false;
+  }
+
+  try {
+    const notification = new Notification(title, {
+      body,
+      icon: '/favicon.ico',
+      tag: 'camera-update'
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+
+    return true;
+  } catch (error) {
+    console.error('Error showing notification:', error);
+    return false;
+  }
+};
