@@ -6,19 +6,22 @@ export default function Features() {
       icon: AlertCircle,
       title: "Real-Time Updates",
       description: "Get notified within minutes when camera locations change on the city website.",
-      color: "text-primary"
+      iconColor: "text-primary",
+      bgColor: "bg-primary/10"
     },
     {
       icon: Shield,
       title: "Avoid Tickets",
       description: "Stay informed about mobile camera locations to drive safely and avoid costly tickets.",
-      color: "text-green-600"
+      iconColor: "text-green-600",
+      bgColor: "bg-green-600/10"
     },
     {
       icon: Smartphone,
       title: "Mobile Friendly",
       description: "Access current locations and manage notifications from any device, anywhere.",
-      color: "text-orange-600"
+      iconColor: "text-orange-600",
+      bgColor: "bg-orange-600/10"
     }
   ];
 
@@ -33,8 +36,8 @@ export default function Features() {
             const IconComponent = feature.icon;
             return (
               <div key={index} className="text-center">
-                <div className={`bg-opacity-10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${feature.color.replace('text-', 'bg-')}`}>
-                  <IconComponent className={`${feature.color} h-8 w-8`} />
+                <div className={`${feature.bgColor} w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4`}>
+                  <IconComponent className={`${feature.iconColor} h-8 w-8`} />
                 </div>
                 <h4 className="text-xl font-semibold mb-3">{feature.title}</h4>
                 <p className="text-gray-600">{feature.description}</p>
