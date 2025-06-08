@@ -9,6 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -75,6 +76,7 @@ function MapUpdater({ deployments }: { deployments: CameraDeployment[] }) {
 }
 
 export default function CameraMap() {
+  const isMobile = useIsMobile();
   const [selectedTab, setSelectedTab] = useState('current');
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
@@ -160,20 +162,41 @@ export default function CameraMap() {
         </CardHeader>
         <CardContent>
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="current">Current Locations</TabsTrigger>
+            <TabsList className={`grid w-full ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
+              <TabsTrigger value="current">{isMobile ? 'Current' : 'Current Locations'}</TabsTrigger>
               <TabsTrigger value="historical">Historical</TabsTrigger>
-              <TabsTrigger value="range">Date Range</TabsTrigger>
-              <TabsTrigger value="combined">All Overlaid</TabsTrigger>
+              {!isMobile && <TabsTrigger value="range">Date Range</TabsTrigger>}
+              {!isMobile && <TabsTrigger value="combined">All Overlaid</TabsTrigger>}
             </TabsList>
+            
+            {isMobile && (
+              <div className="flex gap-2">
+                <Button
+                  variant={selectedTab === 'range' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedTab('range')}
+                  className="flex-1"
+                >
+                  Date Range
+                </Button>
+                <Button
+                  variant={selectedTab === 'combined' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedTab('combined')}
+                  className="flex-1"
+                >
+                  All Overlaid
+                </Button>
+              </div>
+            )}</TabsList>
 
             {selectedTab === 'range' && (
-              <div className="flex gap-4 items-center">
+              <div className={`flex gap-4 items-center ${isMobile ? 'flex-col' : 'flex-row'}`}>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
+                    <Button variant="outline" className={`${isMobile ? 'w-full' : 'w-[240px]'} justify-start text-left font-normal`}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.from ? format(dateRange.from, "PPP") : "Pick start date"}
+                      {dateRange.from ? format(dateRange.from, isMobile ? "MMM d, yyyy" : "PPP") : "Pick start date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -188,9 +211,9 @@ export default function CameraMap() {
                 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
+                    <Button variant="outline" className={`${isMobile ? 'w-full' : 'w-[240px]'} justify-start text-left font-normal`}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.to ? format(dateRange.to, "PPP") : "Pick end date"}
+                      {dateRange.to ? format(dateRange.to, isMobile ? "MMM d, yyyy" : "PPP") : "Pick end date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -206,7 +229,7 @@ export default function CameraMap() {
             )}
 
             <TabsContent value={selectedTab} className="space-y-4">
-              <div className="h-[600px] w-full rounded-lg overflow-hidden border">
+              <div className={`${isMobile ? 'h-[400px]' : 'h-[600px]'} w-full rounded-lg overflow-hidden border`}>
                 {loading ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -258,7 +281,7 @@ export default function CameraMap() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'}`}>
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-2xl font-bold">{validDeployments.length}</div>

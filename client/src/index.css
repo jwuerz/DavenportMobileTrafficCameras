@@ -25,6 +25,33 @@
   --radius: 0.5rem;
 }
 
+/* Mobile map improvements */
+@media (max-width: 768px) {
+  .leaflet-container {
+    height: 100% !important;
+    touch-action: pan-x pan-y;
+  }
+  
+  .leaflet-control-container .leaflet-top.leaflet-left {
+    top: 10px !important;
+    left: 10px !important;
+  }
+  
+  .leaflet-control-container .leaflet-top.leaflet-right {
+    top: 10px !important;
+    right: 10px !important;
+  }
+  
+  .leaflet-popup-content-wrapper {
+    max-width: 280px !important;
+  }
+  
+  .leaflet-control-zoom {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+  }
+}
+
 .dark {
   --background: hsl(224, 71.4%, 4.1%);
   --foreground: hsl(210, 40%, 98%);
