@@ -1,8 +1,10 @@
-
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle, MapPin, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, CheckCircle, MapPin, Calendar, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 interface DeploymentAnalysis {
   totalDeployments: number;
@@ -42,6 +44,30 @@ export default function DeploymentAnalysis() {
     queryKey: ['/api/deployments/analyze']
   });
 
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const cleanupMutation = useMutation(
+    () => fetch('/api/deployments/cleanup', { method: 'POST' }).then(res => res.json()),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/api/deployments/analyze'] });
+        toast({
+          title: "Cleanup Successful",
+          description: "Duplicate deployments have been removed.",
+        })
+      },
+      onError: (error) => {
+        toast({
+          variant: "destructive",
+          title: "Cleanup Failed",
+          description: "Failed to remove duplicate deployments.",
+        })
+      }
+    }
+  );
+
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-8">
@@ -66,11 +92,25 @@ export default function DeploymentAnalysis() {
 
   return (
     <div className="container mx-auto py-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Deployment Data Analysis</h1>
-        <p className="text-muted-foreground">
-          Analyze deployment configuration and detect potential issues
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Deployment Analysis</h1>
+          <p className="text-muted-foreground">
+            Analyze camera deployment data for duplicates and configuration issues
+          </p>
+        </div>
+
+        {analysis?.summary.hasDuplicates && (
+          <Button 
+            onClick={() => cleanupMutation.mutate()}
+            disabled={cleanupMutation.isPending}
+            variant="destructive"
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            {cleanupMutation.isPending ? 'Cleaning...' : 'Clean Duplicates'}
+          </Button>
+        )}
       </div>
 
       {/* Summary Cards */}

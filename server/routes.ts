@@ -366,6 +366,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clean up duplicate deployments
+  app.post("/api/clean-duplicates", async (req, res) => {
+    try {
+      const allDeployments = await storage.getAllCameraDeployments();
+      
+      // Group by normalized address
+      const groupedByAddress = allDeployments.reduce((acc, deployment) => {
+        const normalizedAddress = deployment.address.toLowerCase().trim();
+        if (!acc[normalizedAddress]) {
+          acc[normalizedAddress] = [];
+        }
+        acc[normalizedAddress].push(deployment);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      let cleanedCount = 0;
+      let keptCount = 0;
+
+      // For each address group, keep only the most recent deployment
+      for (const [address, deployments] of Object.entries(groupedByAddress)) {
+        if (deployments.length > 1) {
+          // Sort by start date (most recent first)
+          deployments.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+          
+          // Keep the first (most recent) deployment, mark others for deletion
+          const toKeep = deployments[0];
+          const toDelete = deployments.slice(1);
+          
+          console.log(`Address: ${address}`);
+          console.log(`Keeping deployment ID ${toKeep.id} from ${toKeep.startDate}`);
+          console.log(`Removing ${toDelete.length} duplicate(s)`);
+          
+          // Delete duplicates using the storage method
+          for (const duplicate of toDelete) {
+            await storage.deleteCameraDeployment(duplicate.id);
+            cleanedCount++;
+          }
+          
+          keptCount++;
+        } else {
+          keptCount++;
+        }
+      }
+
+      res.json({ 
+        message: `Cleanup completed. Removed ${cleanedCount} duplicates, kept ${keptCount} unique deployments.`,
+        removed: cleanedCount,
+        kept: keptCount
+      });
+    } catch (error) {
+      console.error("Error cleaning duplicates:", error);
+      res.status(500).json({ message: "Failed to clean duplicate deployments" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
