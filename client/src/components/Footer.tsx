@@ -37,11 +37,6 @@ export default function Footer() {
                   Manage Subscription
                 </a>
               </li>
-              <li>
-                <a href="/privacy" className="hover:text-white transition-colors">
-                  Privacy Policy
-                </a>
-              </li>
             </ul>
           </div>
 
