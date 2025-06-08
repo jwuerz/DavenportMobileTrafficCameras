@@ -29,22 +29,49 @@ export class NotificationService {
 
   async requestPermissionAndGetToken(): Promise<NotificationPermissionResult> {
     try {
+      // Check if browser supports notifications
+      if (!('Notification' in window)) {
+        return { 
+          granted: false, 
+          error: 'Your browser does not support notifications. Please use a modern browser like Chrome, Firefox, or Safari.' 
+        };
+      }
+
+      // Check current permission status
+      const currentPermission = Notification.permission;
+      console.log('Current notification permission:', currentPermission);
+
+      if (currentPermission === 'denied') {
+        return { 
+          granted: false, 
+          error: 'Notifications are blocked. Please click the notification icon in your browser\'s address bar and allow notifications, then try again.' 
+        };
+      }
+
       if (!this.initialized) {
         const initialized = await this.initialize();
         if (!initialized) {
           return { 
             granted: false, 
-            error: 'Firebase messaging not supported or configured' 
+            error: 'Push notification service is not available. Please check your internet connection.' 
           };
         }
       }
 
       const permissionGranted = await requestNotificationPermission();
       if (!permissionGranted) {
-        return { 
-          granted: false, 
-          error: 'Notification permission denied' 
-        };
+        const finalPermission = Notification.permission;
+        if (finalPermission === 'denied') {
+          return { 
+            granted: false, 
+            error: 'Notifications were blocked. To receive alerts, please allow notifications in your browser settings and refresh the page.' 
+          };
+        } else {
+          return { 
+            granted: false, 
+            error: 'Notification permission was not granted. Please try again.' 
+          };
+        }
       }
 
       const token = await getFirebaseToken();
@@ -54,14 +81,14 @@ export class NotificationService {
       } else {
         return { 
           granted: true, 
-          error: 'Failed to get FCM token' 
+          error: 'Push notification setup incomplete. You may still receive browser notifications.' 
         };
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
       return { 
         granted: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'An unexpected error occurred while setting up notifications.' 
       };
     }
   }

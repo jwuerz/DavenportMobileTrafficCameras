@@ -41,17 +41,42 @@ export const initializeFirebase = async () => {
 
 export const requestNotificationPermission = async () => {
   try {
-    if (!messaging) {
-      await initializeFirebase();
+    // First check if notifications are supported
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      return false;
     }
 
-    if (!messaging) {
-      throw new Error('Firebase messaging not available');
+    // Check current permission status
+    let permission = Notification.permission;
+    console.log('Current permission status:', permission);
+
+    // If permission is already granted, return true
+    if (permission === 'granted') {
+      console.log('Notification permission already granted');
+      return true;
     }
 
-    const permission = await Notification.requestPermission();
+    // If permission is denied, we can't request again
+    if (permission === 'denied') {
+      console.log('Notification permission was previously denied');
+      return false;
+    }
+
+    // Request permission if it's default
+    if (permission === 'default') {
+      console.log('Requesting notification permission...');
+      permission = await Notification.requestPermission();
+    }
+
     if (permission === 'granted') {
       console.log('Notification permission granted');
+      
+      // Initialize Firebase messaging after permission is granted
+      if (!messaging) {
+        await initializeFirebase();
+      }
+      
       return true;
     } else {
       console.log('Notification permission denied');
