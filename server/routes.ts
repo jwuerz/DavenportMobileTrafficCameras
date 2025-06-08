@@ -367,7 +367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Clean up duplicate deployments
-  app.post("/api/clean-duplicates", async (req, res) => {
+  app.post("/api/deployments/cleanup", async (req, res) => {
     try {
       const allDeployments = await storage.getAllCameraDeployments();
       
