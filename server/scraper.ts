@@ -434,6 +434,7 @@ export class DavenportScraper {
   async forceRefresh(): Promise<void> {
     console.log('Force refreshing camera locations...');
     await storage.clearAllCameraLocations();
+    await storage.clearHistoricalDeployments();
     await this.initializeLocations();
   }
 }

@@ -19,40 +19,52 @@ export class GeocodingService {
       // Add delay to respect rate limits (1 request per second)
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Clean and format address for Davenport, Iowa
-      const cleanAddress = this.formatDavenportAddress(address);
-      
-      const params = new URLSearchParams({
-        q: cleanAddress,
-        format: 'json',
-        limit: '1',
-        countrycodes: 'us'
-      });
+      // Try multiple geocoding strategies
+      const strategies = [
+        this.formatDavenportAddress(address),
+        this.formatAsIntersection(address),
+        this.formatAsFirstAddressOnly(address)
+      ];
 
-      const response = await fetch(`${this.baseUrl}?${params}`, {
-        headers: {
-          'User-Agent': this.userAgent
+      for (const cleanAddress of strategies) {
+        console.log(`Trying geocoding strategy: "${cleanAddress}"`);
+        
+        const params = new URLSearchParams({
+          q: cleanAddress,
+          format: 'json',
+          limit: '1',
+          countrycodes: 'us'
+        });
+
+        const response = await fetch(`${this.baseUrl}?${params}`, {
+          headers: {
+            'User-Agent': this.userAgent
+          }
+        });
+
+        if (!response.ok) {
+          console.error('Geocoding API error:', response.status);
+          continue;
         }
-      });
 
-      if (!response.ok) {
-        console.error('Geocoding API error:', response.status);
-        return null;
+        const data: NominatimResponse[] = await response.json();
+        
+        if (data.length > 0) {
+          const result = data[0];
+          console.log(`Geocoding success with strategy "${cleanAddress}":`, result.lat, result.lon);
+          return {
+            latitude: parseFloat(result.lat),
+            longitude: parseFloat(result.lon),
+            formattedAddress: result.display_name
+          };
+        }
+
+        // Add delay between attempts
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      const data: NominatimResponse[] = await response.json();
-      
-      if (data.length === 0) {
-        console.warn(`No geocoding results found for address: ${address}`);
-        return null;
-      }
-
-      const result = data[0];
-      return {
-        latitude: parseFloat(result.lat),
-        longitude: parseFloat(result.lon),
-        formattedAddress: result.display_name
-      };
+      console.warn(`No geocoding results found for address after all strategies: ${address}`);
+      return null;
 
     } catch (error) {
       console.error('Geocoding error:', error);
@@ -109,6 +121,34 @@ export class GeocodingService {
       return parts.slice(1).join(' ');
     }
     return addressPart;
+  }
+
+  private formatAsIntersection(address: string): string {
+    // Format as simple intersection for Davenport
+    let cleanAddress = address.trim();
+    
+    if (cleanAddress.includes('&') || cleanAddress.includes('–') || cleanAddress.includes('-')) {
+      const parts = cleanAddress.split(/[&–-]/).map(p => p.trim());
+      if (parts.length >= 2) {
+        const street1 = this.extractStreetName(parts[0]);
+        const street2 = this.extractStreetName(parts[1]);
+        return `${street1} and ${street2}, Davenport, Iowa, USA`;
+      }
+    }
+    
+    return `${cleanAddress}, Davenport, Iowa, USA`;
+  }
+
+  private formatAsFirstAddressOnly(address: string): string {
+    // Use just the first address part
+    let cleanAddress = address.trim();
+    
+    if (cleanAddress.includes('&') || cleanAddress.includes('–') || cleanAddress.includes('-')) {
+      const parts = cleanAddress.split(/[&–-]/).map(p => p.trim());
+      cleanAddress = parts[0];
+    }
+    
+    return `${cleanAddress}, Davenport, Iowa, USA`;
   }
 
   async batchGeocode(addresses: string[]): Promise<Map<string, GeocodeResult>> {
