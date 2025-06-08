@@ -100,24 +100,32 @@ export const getFirebaseToken = async () => {
 
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
     if (!vapidKey) {
-      console.error('VAPID key not configured');
-      return null;
+      console.error('VAPID key not configured - check VITE_FIREBASE_VAPID_KEY environment variable');
+      throw new Error('VAPID key not configured. Push notifications require a VAPID key.');
     }
 
+    console.log('Requesting FCM token with VAPID key...');
     const token = await getToken(messaging, {
       vapidKey: vapidKey
     });
 
     if (token) {
-      console.log('FCM token generated:', token);
+      console.log('FCM token generated successfully:', token.substring(0, 20) + '...');
       return token;
     } else {
-      console.log('No FCM token available');
-      return null;
+      console.log('No FCM token available - this may be due to browser settings or lack of service worker');
+      throw new Error('Failed to generate FCM token. Check browser permissions and service worker registration.');
     }
   } catch (error) {
     console.error('Error getting FCM token:', error);
-    return null;
+    if (error.code === 'messaging/unsupported-browser') {
+      throw new Error('Your browser does not support push notifications.');
+    } else if (error.code === 'messaging/permission-blocked') {
+      throw new Error('Notification permission was blocked. Please allow notifications in your browser settings.');
+    } else if (error.code === 'messaging/no-sw-in-reg') {
+      throw new Error('Service worker not found. Please refresh the page and try again.');
+    }
+    throw error;
   }
 };
 

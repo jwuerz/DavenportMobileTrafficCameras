@@ -39,17 +39,18 @@ export default function TestPage() {
           });
         }
       } else {
+        console.error("Registration failed:", result.error);
         toast({
-          title: "Permission Required",
-          description: result.error || "Please allow notifications to receive alerts.",
+          title: "Registration Failed",
+          description: result.error || "Could not register for notifications. Please check your browser settings.",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Firebase notification error:", error);
       toast({
-        title: "Firebase Setup Failed",
-        description: "Configuration may be missing. Using fallback notifications.",
+        title: "Registration Failed",
+        description: `Could not register for notifications: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {

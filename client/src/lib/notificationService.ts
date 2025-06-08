@@ -37,6 +37,14 @@ export class NotificationService {
         };
       }
 
+      // Check service worker support
+      if (!('serviceWorker' in navigator)) {
+        return { 
+          granted: false, 
+          error: 'Your browser does not support service workers, which are required for push notifications.' 
+        };
+      }
+
       // Check current permission status
       const currentPermission = Notification.permission;
       console.log('Current notification permission:', currentPermission);
@@ -45,6 +53,26 @@ export class NotificationService {
         return { 
           granted: false, 
           error: 'Notifications are blocked. Please click the notification icon in your browser\'s address bar and allow notifications, then try again.' 
+        };
+      }
+
+      // Ensure service worker is registered before initializing Firebase
+      try {
+        console.log('Checking service worker registration...');
+        let swRegistration = await navigator.serviceWorker.getRegistration('/sw.js');
+        if (!swRegistration) {
+          console.log('Registering service worker...');
+          swRegistration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+          await navigator.serviceWorker.ready;
+          console.log('Service worker registered successfully');
+        } else {
+          console.log('Service worker already registered');
+        }
+      } catch (swError) {
+        console.error('Service worker registration failed:', swError);
+        return { 
+          granted: false, 
+          error: 'Failed to register service worker. Please refresh the page and try again.' 
         };
       }
 
@@ -74,13 +102,19 @@ export class NotificationService {
 
       // Try to get Firebase token if available
       try {
+        console.log('Attempting to get Firebase token...');
         const token = await getFirebaseToken();
         if (token) {
           this.token = token;
+          console.log('Firebase token obtained successfully');
           return { granted: true, token };
         }
-      } catch (error) {
-        console.log('Firebase token unavailable, using browser notifications only:', error);
+      } catch (firebaseError) {
+        console.error('Firebase token error:', firebaseError);
+        return { 
+          granted: false, 
+          error: `Registration failed: ${firebaseError.message}` 
+        };
       }
       
       // Return success for browser notifications even without Firebase token
@@ -92,7 +126,7 @@ export class NotificationService {
       console.error('Error requesting notification permission:', error);
       return { 
         granted: false, 
-        error: error instanceof Error ? error.message : 'An unexpected error occurred while setting up notifications.' 
+        error: `Registration failed: ${error instanceof Error ? error.message : 'An unexpected error occurred while setting up notifications.'}` 
       };
     }
   }
