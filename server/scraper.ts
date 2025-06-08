@@ -316,21 +316,68 @@ export class DavenportScraper {
       const users = await storage.getAllActiveUsers();
       console.log(`Sending notifications to ${users.length} users`);
 
+      let emailsSent = 0;
+      let emailsFailed = 0;
+
       for (const user of users) {
-        if (user.notificationPreferences.includes('location_changes')) {
-          await sendCameraUpdateNotification(user.email, locations);
-          
-          // Log notification
-          await storage.createNotification({
-            userId: user.id,
-            subject: 'Camera Location Update',
-            content: `Sent notification about ${locations.length} camera locations`,
-            status: 'sent'
-          });
+        // Check if user wants location change notifications
+        const wantsLocationUpdates = user.notificationPreferences.includes('location_changes') || 
+                                   user.notificationPreferences.includes('email');
+        
+        if (wantsLocationUpdates) {
+          try {
+            console.log(`Sending notification to ${user.email}`);
+            const result = await sendCameraUpdateNotification(user.email, locations);
+            
+            if (result.success) {
+              emailsSent++;
+              // Log successful notification
+              await storage.createNotification({
+                userId: user.id,
+                subject: 'Camera Location Update',
+                content: `Sent notification about ${locations.length} camera locations`,
+                status: 'sent'
+              });
+            } else {
+              emailsFailed++;
+              console.error(`Failed to send email to ${user.email}:`, result.error);
+              // Log failed notification
+              await storage.createNotification({
+                userId: user.id,
+                subject: 'Camera Location Update',
+                content: `Failed to send notification: ${result.error?.message || 'Unknown error'}`,
+                status: 'failed'
+              });
+            }
+
+            // Add small delay between emails to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+          } catch (error) {
+            emailsFailed++;
+            console.error(`Error sending notification to ${user.email}:`, error);
+            
+            // Log failed notification
+            try {
+              await storage.createNotification({
+                userId: user.id,
+                subject: 'Camera Location Update',
+                content: `Error sending notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                status: 'failed'
+              });
+            } catch (logError) {
+              console.error('Error logging failed notification:', logError);
+            }
+          }
+        } else {
+          console.log(`User ${user.email} not subscribed to location updates`);
         }
       }
+      
+      console.log(`Notification summary: ${emailsSent} sent, ${emailsFailed} failed`);
+      
     } catch (error) {
-      console.error('Error notifying users:', error);
+      console.error('Error in notification process:', error);
     }
   }
 
