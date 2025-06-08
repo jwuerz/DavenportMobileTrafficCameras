@@ -9,6 +9,7 @@ import DeploymentAnalysis from "./pages/DeploymentAnalysis";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import NotFound from "@/pages/not-found";
+import TestPage from "@/pages/TestPage"; // Import TestPage
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/analysis" component={DeploymentAnalysis} />
       <Route path="/privacy" component={PrivacyPolicy} />
       <Route path="/terms" component={TermsOfService} />
+      <Route path="/test" component={TestPage} /> {/* Add route for TestPage */}
       <Route component={NotFound} />
     </Switch>
   );
