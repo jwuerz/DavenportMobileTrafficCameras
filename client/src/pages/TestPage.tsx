@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, Mail, TestTube } from "lucide-react";
 import NotificationGuide from "@/components/NotificationGuide";
+import PushNotificationTester from "@/components/PushNotificationTester";
 
 export default function TestPage() {
   const [testEmail, setTestEmail] = useState("");
@@ -344,6 +345,9 @@ export default function TestPage() {
           <div className="flex justify-center">
             <NotificationGuide />
           </div>
+          
+          {/* Push Notification Tester */}
+          <PushNotificationTester />
 
           <div className="grid gap-6 md:grid-cols-1">
             {/* Email Tests */}

@@ -698,6 +698,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test push notification with custom data
+  app.post("/api/test-push-notification", async (req, res) => {
+    try {
+      const { fcmToken, notification, data } = req.body;
+
+      if (!fcmToken) {
+        return res.status(400).json({ message: "FCM token is required" });
+      }
+
+      if (!notification || !notification.title || !notification.body) {
+        return res.status(400).json({ message: "Notification title and body are required" });
+      }
+
+      // Send custom test notification
+      const result = await fcmService.sendNotification(fcmToken, {
+        title: notification.title,
+        body: notification.body,
+        data: data || {}
+      });
+      
+      if (result.success) {
+        res.json({ message: "Test push notification sent successfully" });
+      } else {
+        console.error("Push notification test failed:", result.error);
+        res.status(500).json({ 
+          message: "Failed to send test notification", 
+          error: result.error 
+        });
+      }
+    } catch (error) {
+      console.error("Error testing push notification:", error);
+      res.status(500).json({ message: "Failed to test push notification" });
+    }
+  });
+
+  // Test camera update notification
+  app.post("/api/test-camera-notification", async (req, res) => {
+    try {
+      const { fcmToken } = req.body;
+
+      if (!fcmToken) {
+        return res.status(400).json({ message: "FCM token is required" });
+      }
+
+      // Send camera update test notification
+      const result = await fcmService.sendCameraUpdateNotification([fcmToken], 5);
+      
+      if (result.length > 0 && result[0].success) {
+        res.json({ message: "Camera update notification sent successfully" });
+      } else {
+        console.error("Camera notification test failed:", result[0]?.error);
+        res.status(500).json({ 
+          message: "Failed to send camera update notification", 
+          error: result[0]?.error 
+        });
+      }
+    } catch (error) {
+      console.error("Error testing camera notification:", error);
+      res.status(500).json({ message: "Failed to test camera notification" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

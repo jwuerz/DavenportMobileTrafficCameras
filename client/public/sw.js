@@ -3,14 +3,14 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Initialize Firebase in service worker
+// Get Firebase config from environment or use defaults
 const firebaseConfig = {
-  apiKey: "AIzaSyCapElwmFaE0C8ADqawdTePBaUYrgmTuKw",
-  authDomain: "davenport-camera-alerts.firebaseapp.com",
-  projectId: "davenport-camera-alerts",
-  storageBucket: "davenport-camera-alerts.firebasestorage.app",
-  messagingSenderId: "339062561251",
-  appId: "1:339062561251:web:0913ec30efe9de699928d6"
+  apiKey: self.VITE_FIREBASE_API_KEY || "AIzaSyCapElwmFaE0C8ADqawdTePBaUYrgmTuKw",
+  authDomain: self.VITE_FIREBASE_AUTH_DOMAIN || "davenport-camera-alerts.firebaseapp.com",
+  projectId: self.VITE_FIREBASE_PROJECT_ID || "davenport-camera-alerts",
+  storageBucket: self.VITE_FIREBASE_STORAGE_BUCKET || "davenport-camera-alerts.firebasestorage.app",
+  messagingSenderId: self.VITE_FIREBASE_MESSAGING_SENDER_ID || "339062561251",
+  appId: self.VITE_FIREBASE_APP_ID || "1:339062561251:web:0913ec30efe9de699928d6"
 };
 
 // Check if Firebase is already initialized
@@ -20,29 +20,34 @@ if (!firebase.apps.length) {
 
 const messaging = firebase.messaging();
 
-// Handle background messages
+// Handle background messages (works on all platforms)
 messaging.onBackgroundMessage(function(payload) {
   console.log('Received background message:', payload);
 
-  const notificationTitle = payload.notification?.title || 'Camera Location Update';
+  const notificationTitle = payload.notification?.title || '🚦 Camera Location Update';
   const notificationOptions = {
-    body: payload.notification?.body || 'Traffic camera locations have been updated',
+    body: payload.notification?.body || 'Traffic camera locations have been updated in Davenport',
     icon: '/favicon.ico',
     badge: '/favicon.ico',
     tag: 'camera-update',
     requireInteraction: true,
+    silent: false,
+    vibrate: [200, 100, 200], // Android vibration pattern
     data: {
       url: payload.data?.url || '/',
-      clickAction: payload.data?.clickAction || 'open_app'
+      clickAction: payload.data?.clickAction || 'open_app',
+      timestamp: Date.now()
     },
     actions: [
       {
         action: 'view_locations',
-        title: 'View Locations'
+        title: 'View Locations',
+        icon: '/favicon.ico'
       },
       {
         action: 'dismiss',
-        title: 'Dismiss'
+        title: 'Dismiss',
+        icon: '/favicon.ico'
       }
     ]
   };
