@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { storage } from './storage';
 import { sendCameraUpdateNotification } from './emailService';
+import { fcmService } from './fcmService';
 import { geocodingService } from './geocoding';
 import type { InsertCameraDeployment } from '@shared/schema';
 
@@ -326,31 +327,44 @@ export class DavenportScraper {
         
         if (wantsLocationUpdates) {
           try {
-            console.log(`Sending notification to ${user.email}`);
-            const result = await sendCameraUpdateNotification(user.email, locations);
+            console.log(`Sending notifications to ${user.email}`);
             
-            if (result.success) {
+            // Send email notification
+            const emailResult = await sendCameraUpdateNotification(user.email, locations);
+            
+            // Send Firebase push notification if user has FCM token
+            let fcmResult = null;
+            if (user.fcmToken) {
+              try {
+                fcmResult = await fcmService.sendCameraUpdateNotification([user.fcmToken], locations.length);
+                console.log(`FCM notification sent to ${user.email}: ${fcmResult[0]?.success ? 'success' : 'failed'}`);
+              } catch (fcmError) {
+                console.error(`FCM notification failed for ${user.email}:`, fcmError);
+              }
+            }
+            
+            if (emailResult.success) {
               emailsSent++;
               // Log successful notification
               await storage.createNotification({
                 userId: user.id,
                 subject: 'Camera Location Update',
-                content: `Sent notification about ${locations.length} camera locations`,
+                content: `Sent email and ${user.fcmToken ? 'push' : 'no push'} notification about ${locations.length} camera locations`,
                 status: 'sent'
               });
             } else {
               emailsFailed++;
-              console.error(`Failed to send email to ${user.email}:`, result.error);
+              console.error(`Failed to send email to ${user.email}:`, emailResult.error);
               // Log failed notification
               await storage.createNotification({
                 userId: user.id,
                 subject: 'Camera Location Update',
-                content: `Failed to send notification: ${result.error?.message || 'Unknown error'}`,
+                content: `Failed to send notification: ${emailResult.error?.message || 'Unknown error'}`,
                 status: 'failed'
               });
             }
 
-            // Add small delay between emails to avoid rate limiting
+            // Add small delay between notifications to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 1000));
             
           } catch (error) {

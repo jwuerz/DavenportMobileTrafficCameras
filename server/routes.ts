@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { scheduler } from "./scheduler";
 import { insertUserSchema } from "@shared/schema";
 import { sendTestNotification, sendWelcomeEmail } from "./emailService";
+import { fcmService } from "./fcmService";
 import { z } from "zod";
 
 // Initialize the scheduler
@@ -534,6 +535,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error during force refresh:", error);
       res.status(500).json({ message: "Failed to complete force refresh" });
+    }
+  });
+
+  // Firebase Cloud Messaging endpoints
+
+  // Register FCM token for a user
+  app.post("/api/fcm-token", async (req, res) => {
+    try {
+      const { email, fcmToken } = req.body;
+
+      if (!email || !fcmToken) {
+        return res.status(400).json({ message: "Email and FCM token are required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user with FCM token
+      const updatedUser = await storage.updateUser(user.id, { fcmToken });
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update FCM token" });
+      }
+
+      console.log(`FCM token registered for user: ${email}`);
+      res.json({ message: "FCM token registered successfully" });
+    } catch (error) {
+      console.error("Error registering FCM token:", error);
+      res.status(500).json({ message: "Failed to register FCM token" });
+    }
+  });
+
+  // Test Firebase push notification
+  app.post("/api/test-fcm", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Find user and their FCM token
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!user.fcmToken) {
+        return res.status(400).json({ message: "User has no FCM token registered" });
+      }
+
+      // Send test notification
+      const result = await fcmService.testNotification(user.fcmToken);
+      
+      if (result.success) {
+        res.json({ message: "Test FCM notification sent successfully" });
+      } else {
+        console.error("FCM test failed:", result.error);
+        res.status(500).json({ 
+          message: "Failed to send test notification", 
+          error: result.error 
+        });
+      }
+    } catch (error) {
+      console.error("Error testing FCM:", error);
+      res.status(500).json({ message: "Failed to test FCM notification" });
+    }
+  });
+
+  // Get FCM service status
+  app.get("/api/fcm-status", async (req, res) => {
+    try {
+      const isConfigured = fcmService.isConfigured();
+      const users = await storage.getAllActiveUsers();
+      const usersWithTokens = users.filter(user => user.fcmToken).length;
+
+      res.json({
+        configured: isConfigured,
+        totalUsers: users.length,
+        usersWithTokens,
+        mode: process.env.NODE_ENV || 'development'
+      });
+    } catch (error) {
+      console.error("Error getting FCM status:", error);
+      res.status(500).json({ message: "Failed to get FCM status" });
     }
   });
 

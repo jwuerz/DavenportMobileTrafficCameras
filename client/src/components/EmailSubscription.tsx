@@ -59,29 +59,32 @@ export default function EmailSubscription() {
     }
   };
 
-  const enableBrowserNotifications = () => {
-    if ("Notification" in window) {
-      Notification.requestPermission().then(function (permission) {
-        if (permission === "granted") {
-          new Notification("Camera Alerts Enabled!", {
-            body: "You will now receive browser notifications when camera locations change.",
-          });
-          toast({
-            title: "Chrome Notifications Enabled",
-            description: "You will receive browser notifications for camera updates.",
-          });
-        } else {
-          toast({
-            title: "Notifications Blocked",
-            description: "Please enable notifications in your browser settings.",
-            variant: "destructive",
-          });
-        }
-      });
-    } else {
+  const enableBrowserNotifications = async () => {
+    const { notificationService } = await import("@/lib/notificationService");
+    
+    try {
+      const result = await notificationService.requestPermissionAndGetToken();
+      
+      if (result.granted) {
+        // Test the notification
+        await notificationService.testNotification();
+        
+        toast({
+          title: "Push Notifications Enabled",
+          description: "You will receive push notifications for camera updates.",
+        });
+      } else {
+        toast({
+          title: "Notifications Blocked",
+          description: result.error || "Please enable notifications in your browser settings.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error enabling notifications:", error);
       toast({
-        title: "Not Supported",
-        description: "Your browser doesn't support notifications.",
+        title: "Error",
+        description: "Failed to enable notifications. Please try again.",
         variant: "destructive",
       });
     }
