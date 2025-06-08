@@ -1,3 +1,5 @@
+import { storage } from './storage';
+
 if (!process.env.BREVO_API_KEY) {
   console.warn("BREVO_API_KEY environment variable not set. Email notifications will be disabled.");
 }
@@ -243,9 +245,9 @@ function generateHtmlEmailContent(locations: ScrapedLocation[]): string {
 
     <!-- CTA Buttons -->
     <div style="text-align: center; margin-bottom: 24px;">
-      <a href="https://www.davenportiowa.com/government/departments/police/automated_traffic_enforcement" 
+      <a href="https://davenportcams.replit.app" 
          style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-right: 8px; display: inline-block;">
-        View Official Website
+        View Current Locations
       </a>
       <a href="#manage-subscription" 
          style="background-color: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
@@ -295,20 +297,16 @@ function getTypeLabel(type: string): string {
 }
 
 export async function sendTestNotification(userEmail: string): Promise<SendEmailResult> {
-  const testLocations: ScrapedLocation[] = [
-    {
-      address: "53rd & Eastern Ave",
-      type: "mobile",
-      description: "Speed enforcement zone",
-      schedule: "Mon-Fri, 7am-6pm"
-    },
-    {
-      address: "Locust St & Brady St", 
-      type: "red_light",
-      description: "Intersection monitoring",
-      schedule: "24/7"
-    }
-  ];
+  // Get actual current locations from the database
+  const currentLocations = await storage.getCurrentCameraLocations();
+  
+  // Convert database format to ScrapedLocation format for email
+  const testLocations: ScrapedLocation[] = currentLocations.map(location => ({
+    address: location.address,
+    type: location.type,
+    description: location.description,
+    schedule: location.schedule
+  }));
 
   return await sendCameraUpdateNotification(userEmail, testLocations);
 }
