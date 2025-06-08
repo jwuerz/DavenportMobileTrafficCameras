@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, json, date, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -7,7 +7,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   phone: text("phone"),
   isActive: boolean("is_active").notNull().default(true),
-  notificationPreferences: json("notification_preferences").$type<string[]>().notNull().default('[]'),
+  notificationPreferences: json("notification_preferences").$type<string[]>().notNull().default(['email']),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -30,6 +30,25 @@ export const notifications = pgTable("notifications", {
   status: text("status").notNull().default("sent"), // 'sent', 'failed'
 });
 
+// Historical tracking of camera deployments by week/period
+export const cameraDeployments = pgTable("camera_deployments", {
+  id: serial("id").primaryKey(),
+  address: text("address").notNull(),
+  type: text("type").notNull(), // 'mobile', 'fixed', 'red_light'
+  description: text("description"),
+  schedule: text("schedule"),
+  // Geographic coordinates for mapping
+  latitude: numeric("latitude", { precision: 10, scale: 8 }),
+  longitude: numeric("longitude", { precision: 11, scale: 8 }),
+  // Time period for this deployment
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  weekOfYear: text("week_of_year"), // e.g., "2025-W23" for easier querying
+  // Data source tracking
+  scrapedAt: timestamp("scraped_at").notNull().defaultNow(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -45,9 +64,16 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   sentAt: true,
 });
 
+export const insertCameraDeploymentSchema = createInsertSchema(cameraDeployments).omit({
+  id: true,
+  scrapedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertCameraLocation = z.infer<typeof insertCameraLocationSchema>;
 export type CameraLocation = typeof cameraLocations.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+export type InsertCameraDeployment = z.infer<typeof insertCameraDeploymentSchema>;
+export type CameraDeployment = typeof cameraDeployments.$inferSelect;
