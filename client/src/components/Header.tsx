@@ -72,6 +72,12 @@ export default function Header() {
               >
                 Camera Locations
               </button>
+              <a
+                href="/history"
+                className="text-gray-700 hover:text-primary transition-colors text-left"
+              >
+                History Map
+              </a>
               <button
                 onClick={() => scrollToSection("subscribe")}
                 className="text-gray-700 hover:text-primary transition-colors text-left"
