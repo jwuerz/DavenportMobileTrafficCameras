@@ -66,13 +66,13 @@ export default function NotificationGuide() {
     
     switch (status) {
       case 'granted':
-        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Enabled</Badge>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Enabled</span>;
       case 'denied':
-        return <Badge variant="destructive"><BellOff className="w-3 h-3 mr-1" />Blocked</Badge>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"><BellOff className="w-3 h-3 mr-1" />Blocked</span>;
       case 'default':
-        return <Badge variant="secondary"><Bell className="w-3 h-3 mr-1" />Not Set</Badge>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"><Bell className="w-3 h-3 mr-1" />Not Set</span>;
       default:
-        return <Badge variant="outline"><AlertTriangle className="w-3 h-3 mr-1" />Unsupported</Badge>;
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><AlertTriangle className="w-3 h-3 mr-1" />Unsupported</span>;
     }
   };
 
