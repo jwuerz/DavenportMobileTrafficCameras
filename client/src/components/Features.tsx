@@ -1,9 +1,9 @@
-import { Clock, Shield, Smartphone } from "lucide-react";
+import { AlertCircle, Clock, Shield, Smartphone } from "lucide-react";
 
 export default function Features() {
   const features = [
     {
-      icon: Clock,
+      icon: AlertCircle,
       title: "Real-Time Updates",
       description: "Get notified within minutes when camera locations change on the city website.",
       color: "text-primary"
