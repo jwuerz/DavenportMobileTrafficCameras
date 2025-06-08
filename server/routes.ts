@@ -398,6 +398,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Keeping deployment ID ${toKeep.id} from ${toKeep.startDate}`);
           console.log(`Removing ${toDelete.length} duplicate(s)`);
           
+          // Ensure the kept deployment is marked as active
+          await storage.updateCameraDeployment(toKeep.id, {
+            isActive: true,
+            endDate: null
+          });
+          
           // Delete duplicates using the storage method
           for (const duplicate of toDelete) {
             await storage.deleteCameraDeployment(duplicate.id);
@@ -406,6 +412,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           keptCount++;
         } else {
+          // Ensure single deployments are also marked as active
+          const deployment = deployments[0];
+          await storage.updateCameraDeployment(deployment.id, {
+            isActive: true,
+            endDate: null
+          });
           keptCount++;
         }
       }
