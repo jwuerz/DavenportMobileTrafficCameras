@@ -28,6 +28,11 @@ export default function Footer() {
                 </a>
               </li>
               <li>
+                <a href="/history" className="hover:text-white transition-colors">
+                  History Map
+                </a>
+              </li>
+              <li>
                 <a href="#subscribe" className="hover:text-white transition-colors">
                   Subscribe
                 </a>
