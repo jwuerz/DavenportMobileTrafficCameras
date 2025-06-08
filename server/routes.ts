@@ -205,6 +205,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current camera deployments with coordinates
+  app.get("/api/deployments/current", async (req, res) => {
+    try {
+      const deployments = await storage.getCurrentDeployments();
+      res.json(deployments);
+    } catch (error) {
+      console.error("Error fetching current deployments:", error);
+      res.status(500).json({ message: "Failed to fetch current deployments" });
+    }
+  });
+
+  // Get historical camera deployments
+  app.get("/api/deployments/historical", async (req, res) => {
+    try {
+      const deployments = await storage.getHistoricalDeployments();
+      res.json(deployments);
+    } catch (error) {
+      console.error("Error fetching historical deployments:", error);
+      res.status(500).json({ message: "Failed to fetch historical deployments" });
+    }
+  });
+
+  // Get deployments by date range
+  app.get("/api/deployments/range", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+
+      const deployments = await storage.getCameraDeploymentsByDateRange(
+        startDate as string,
+        endDate as string
+      );
+      res.json(deployments);
+    } catch (error) {
+      console.error("Error fetching deployments by date range:", error);
+      res.status(500).json({ message: "Failed to fetch deployments" });
+    }
+  });
+
+  // Get deployments by week
+  app.get("/api/deployments/week/:weekOfYear", async (req, res) => {
+    try {
+      const { weekOfYear } = req.params;
+      const deployments = await storage.getCameraDeploymentsByWeek(weekOfYear);
+      res.json(deployments);
+    } catch (error) {
+      console.error("Error fetching deployments by week:", error);
+      res.status(500).json({ message: "Failed to fetch deployments" });
+    }
+  });
+
+  // Get all deployments for mapping
+  app.get("/api/deployments", async (req, res) => {
+    try {
+      const deployments = await storage.getAllCameraDeployments();
+      res.json(deployments);
+    } catch (error) {
+      console.error("Error fetching all deployments:", error);
+      res.status(500).json({ message: "Failed to fetch deployments" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -63,8 +63,16 @@ export class GeocodingService {
     
     // Handle intersection format (e.g., "5800 Eastern Ave – 1900 Brady St")
     if (cleanAddress.includes('–') || cleanAddress.includes('-')) {
-      // Take the first address for geocoding
-      cleanAddress = cleanAddress.split(/[–-]/)[0].trim();
+      // For intersections, use the format "Street1 and Street2, Davenport, Iowa"
+      const parts = cleanAddress.split(/[–-]/).map(p => p.trim());
+      if (parts.length >= 2) {
+        // Extract street names from addresses
+        const street1 = this.extractStreetName(parts[0]);
+        const street2 = this.extractStreetName(parts[1]);
+        cleanAddress = `${street1} and ${street2}`;
+      } else {
+        cleanAddress = this.extractStreetName(parts[0]);
+      }
     }
 
     // Add Davenport, Iowa if not present
@@ -73,6 +81,16 @@ export class GeocodingService {
     }
 
     return cleanAddress;
+  }
+
+  private extractStreetName(addressPart: string): string {
+    // Extract just the street name from an address like "5800 Eastern Ave"
+    const parts = addressPart.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      // Remove the house number, keep the street name
+      return parts.slice(1).join(' ');
+    }
+    return addressPart;
   }
 
   async batchGeocode(addresses: string[]): Promise<Map<string, GeocodeResult>> {
