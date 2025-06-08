@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, Mail, TestTube } from "lucide-react";
 import NotificationGuide from "@/components/NotificationGuide";
-import { useCallback } from 'react';
 
 export default function TestPage() {
   const [testEmail, setTestEmail] = useState("");
@@ -55,7 +54,7 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   const testChromeNotification = async () => {
     console.log("Chrome notification button clicked");
@@ -164,7 +163,7 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [testEmail, toast]);
+  }, [testEmail]);
 
   const sendWelcomeEmail = useCallback(async () => {
     if (!testEmail.trim()) {
@@ -208,7 +207,7 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [testEmail, toast]);
+  }, [testEmail]);
 
   const sendCameraUpdateEmail = useCallback(async () => {
     if (!testEmail.trim()) {
@@ -252,7 +251,7 @@ export default function TestPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [testEmail, toast]);
+  }, [testEmail]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">

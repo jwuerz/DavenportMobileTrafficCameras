@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -11,10 +11,17 @@ export default function NotificationGuide() {
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
   const { toast } = useToast();
 
-  const checkPermissionStatus = () => {
+  useEffect(() => {
     if ('Notification' in window) {
       setPermissionStatus(Notification.permission);
-      return Notification.permission;
+    }
+  }, []);
+
+  const checkPermissionStatus = () => {
+    if ('Notification' in window) {
+      const status = Notification.permission;
+      setPermissionStatus(status);
+      return status;
     }
     return 'unsupported';
   };
@@ -62,9 +69,7 @@ export default function NotificationGuide() {
   };
 
   const getPermissionBadge = () => {
-    const status = checkPermissionStatus();
-    
-    switch (status) {
+    switch (permissionStatus) {
       case 'granted':
         return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Enabled</span>;
       case 'denied':
@@ -77,7 +82,7 @@ export default function NotificationGuide() {
   };
 
   const getInstructions = () => {
-    const status = checkPermissionStatus();
+    const status = permissionStatus;
     
     if (status === 'denied') {
       return (
@@ -164,7 +169,7 @@ export default function NotificationGuide() {
             ) : (
               <Bell className="w-4 h-4" />
             )}
-            {checkPermissionStatus() === 'granted' ? 'Test Notifications' : 'Enable Notifications'}
+            {permissionStatus === 'granted' ? 'Test Notifications' : 'Enable Notifications'}
           </Button>
           
           <Button 
