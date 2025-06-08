@@ -165,6 +165,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+server/routes.ts
+  // --- Push Notification Routes ---
+  app.post("/api/push/subscribe", async (req, res) => {
+    try {
+      const { subscription, userId } = req.body; // Assuming userId is sent by authenticated client
+      if (!subscription || !userId) {
+        return res.status(400).json({ message: "Subscription object and userId are required." });
+      }
+
+      // Basic validation of subscription object
+      if (!subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+        return res.status(400).json({ message: "Invalid subscription object structure." });
+      }
+
+      // TODO: Ensure userId corresponds to an authenticated user
+      // For now, trusting userId passed from client. In production, verify against session/token.
+      // Attempt to import storage correctly based on likely project structure
+      const { storage } = await import('./storage'); // Or directly use if globally available
+      const user = await storage.getUser(parseInt(userId));
+      if (!user) {
+          return res.status(404).json({ message: "User not found." });
+      }
+
+      const createdSubscription = await storage.createPushSubscription(user.id, subscription);
+      if (createdSubscription) {
+        res.status(201).json({ message: "Push subscription saved.", subscriptionId: createdSubscription.id });
+
+        if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+          const webpush = await import('web-push');
+          webpush.setVapidDetails(
+            `mailto:${process.env.FROM_EMAIL || 'davenport-alerts@example.com'}`,
+            process.env.VAPID_PUBLIC_KEY,
+            process.env.VAPID_PRIVATE_KEY
+          );
+          const payload = JSON.stringify({
+            title: 'Davenport Alerts',
+            body: 'You are now subscribed to push notifications!',
+            icon: '/icon-192x192.png',
+          });
+          try {
+            await webpush.sendNotification(subscription, payload);
+            console.log('Welcome push notification sent to new subscriber.');
+          } catch (error) {
+            console.error('Error sending welcome push notification:', error);
+          }
+        }
+
+      } else {
+        res.status(500).json({ message: "Failed to save push subscription." });
+      }
+    } catch (error) {
+      console.error("Error in /api/push/subscribe:", error);
+      // Check for drizzle specific unique constraint error or generic error
+      if (error.message && error.message.includes('duplicate key value violates unique constraint')) { // pg specific
+        return res.status(409).json({ message: "This push subscription endpoint already exists." });
+      }
+      res.status(500).json({ message: "Internal server error." });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", async (req, res) => {
+    try {
+      const { endpoint } = req.body;
+      if (!endpoint) {
+        return res.status(400).json({ message: "Subscription endpoint is required." });
+      }
+      const { storage } = await import('./storage'); // Or directly use
+      const success = await storage.deletePushSubscription(endpoint);
+      if (success) {
+        res.status(200).json({ message: "Push subscription deleted." });
+      } else {
+        res.status(404).json({ message: "Push subscription not found or failed to delete." });
+      }
+    } catch (error) {
+      console.error("Error in /api/push/unsubscribe:", error);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

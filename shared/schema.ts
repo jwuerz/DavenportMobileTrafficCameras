@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, json, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -51,3 +51,16 @@ export type InsertCameraLocation = z.infer<typeof insertCameraLocationSchema>;
 export type CameraLocation = typeof cameraLocations.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+// Push Notification Subscriptions
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  endpoint: text('endpoint').notNull().unique(), // Endpoint should be unique
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;

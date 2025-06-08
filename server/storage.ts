@@ -120,3 +120,86 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+// --- Push Subscription Methods ---
+
+import { eq, and } from 'drizzle-orm';
+import { pushSubscriptions, type NewPushSubscription, type PushSubscription } from '@shared/schema';
+import { users } from '@shared/schema'; // Assuming users is also in @shared/schema
+
+export async function createPushSubscription(userId: number, subscription: { endpoint: string; keys: { p256dh: string; auth: string; } }): Promise<PushSubscription | null> {
+  try {
+    const newSubscription: NewPushSubscription = {
+      userId,
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+    };
+    // Check if endpoint already exists to prevent duplicates, or rely on unique constraint
+    const existing = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, newSubscription.endpoint)).limit(1);
+    if (existing.length > 0) {
+      // Optionally, update the existing subscription or just return it
+      console.log('Push subscription with this endpoint already exists.');
+      return existing[0];
+    }
+    const result = await db.insert(pushSubscriptions).values(newSubscription).returning();
+    return result[0] || null;
+  } catch (error) {
+    console.error('Error creating push subscription:', error);
+    return null;
+  }
+}
+
+export async function getPushSubscriptionsByUserId(userId: number): Promise<PushSubscription[]> {
+  try {
+    return await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  } catch (error) {
+    console.error('Error fetching push subscriptions by user ID:', error);
+    return [];
+  }
+}
+
+export async function getAllActivePushSubscriptions(): Promise<PushSubscription[]> {
+  try {
+    // This needs to join with the users table to check if the user is active
+    // Assuming 'users' table has an 'isActive' boolean field.
+    // And 'pushSubscriptions' has 'userId' that references 'users.id'
+    // This query might need adjustment based on the exact schema and relations.
+    const results = await db.select({
+        id: pushSubscriptions.id,
+        userId: pushSubscriptions.userId,
+        endpoint: pushSubscriptions.endpoint,
+        p256dh: pushSubscriptions.p256dh,
+        auth: pushSubscriptions.auth,
+        createdAt: pushSubscriptions.createdAt
+      })
+      .from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(eq(users.isActive, true)); // Assuming 'users' table and 'isActive' field exist
+
+    return results;
+  } catch (error) {
+    console.error('Error fetching all active push subscriptions:', error);
+    return [];
+  }
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<boolean> {
+  try {
+    const result = await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint)).returning();
+    return result.length > 0;
+  } catch (error) {
+    console.error('Error deleting push subscription:', error);
+    return false;
+  }
+}
+
+export async function deletePushSubscriptionsByUserId(userId: number): Promise<boolean> {
+  try {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+    return true;
+  } catch (error) {
+    console.error('Error deleting push subscriptions by user ID:', error);
+    return false;
+  }
+}

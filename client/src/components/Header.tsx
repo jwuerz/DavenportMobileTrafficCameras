@@ -1,5 +1,8 @@
+import PushNotificationManager from '@/components/PushNotificationManager';
 import { useState } from "react";
+import PushNotificationManager from '@/components/PushNotificationManager';
 import { Menu, X, Video } from "lucide-react";
+import PushNotificationManager from '@/components/PushNotificationManager';
 import { Button } from "@/components/ui/button";
 
 export default function Header() {
@@ -82,6 +85,7 @@ export default function Header() {
           </div>
         )}
       </div>
+            <div className="ml-auto flex items-center space-x-4"><PushNotificationManager /></div>
     </header>
   );
 }

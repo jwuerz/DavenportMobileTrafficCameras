@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import webpush from 'web-push';
 import { storage } from './storage';
 import { sendCameraUpdateNotification } from './emailService';
 
@@ -286,6 +287,12 @@ export class DavenportScraper {
   }
 
   private async notifyUsers(locations: ScrapedLocation[]): Promise<void> {
+    // Call push notifications early in the process
+    try {
+      await sendPushNotificationsToAll("Davenport Camera Update", locations.length + " new or updated camera locations posted.");
+    } catch (pushError) {
+      console.error("Failed to initiate push notifications:", pushError);
+    }
     try {
       const users = await storage.getAllActiveUsers();
       console.log(`Sending notifications to ${users.length} users`);
@@ -340,3 +347,59 @@ export class DavenportScraper {
 }
 
 export const scraper = new DavenportScraper();
+
+async function sendPushNotificationsToAll(title: string, body: string, icon?: string) {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    console.warn('VAPID keys not set. Skipping push notifications.');
+    return;
+  }
+  try {
+    webpush.setVapidDetails(
+      `mailto:${process.env.FROM_EMAIL || 'davenport-alerts@example.com'}`,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+
+    const subscriptions = await storage.getAllActivePushSubscriptions();
+    if (subscriptions.length === 0) {
+      console.log("No active push subscriptions to notify.");
+      return;
+    }
+
+    console.log(`Attempting to send push notifications to ${subscriptions.length} subscribers.`);
+
+    const payload = JSON.stringify({ title, body, icon: icon || '/icon-192x192.png' });
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const sub of subscriptions) {
+      const pushSubscription = {
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: sub.p256dh,
+          auth: sub.auth,
+        },
+      };
+      try {
+        await webpush.sendNotification(pushSubscription, payload);
+        successCount++;
+      } catch (error) {
+        failureCount++;
+        let statusCode = 'Unknown';
+        if (error && typeof error === 'object' && 'statusCode' in error) {
+          statusCode = String(error.statusCode);
+        }
+        console.error(`Error sending push notification to ${sub.endpoint.substring(0,30)}... : ${statusCode}`, error.body || '');
+        if (statusCode === '410' || statusCode === '404') {
+          console.log(`Deleting invalid push subscription: ${pushSubscription.endpoint.substring(0,30)}...`);
+          await storage.deletePushSubscription(pushSubscription.endpoint);
+        }
+      }
+    }
+    console.log(`Push notifications sent: ${successCount} succeeded, ${failureCount} failed.`);
+
+  } catch (error) {
+    console.error('Failed to send push notifications:', error);
+  }
+}
