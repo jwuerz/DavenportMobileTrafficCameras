@@ -33,6 +33,7 @@ export interface IStorage {
   getCurrentDeployments(): Promise<CameraDeployment[]>;
   getHistoricalDeployments(): Promise<CameraDeployment[]>;
   endCurrentDeployments(endDate: string): Promise<void>;
+  clearHistoricalDeployments(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -197,6 +198,12 @@ export class DatabaseStorage implements IStorage {
         isActive: false 
       })
       .where(isNull(cameraDeployments.endDate));
+  }
+
+  async clearHistoricalDeployments(): Promise<void> {
+    await db
+      .delete(cameraDeployments)
+      .where(eq(cameraDeployments.isActive, false));
   }
 }
 

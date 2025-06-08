@@ -269,6 +269,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clear historical deployment data (admin endpoint)
+  app.post("/api/clear-deployment-history", async (req, res) => {
+    try {
+      await storage.clearHistoricalDeployments();
+      res.json({ message: "Historical deployment data cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing deployment history:", error);
+      res.status(500).json({ message: "Failed to clear deployment history" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
