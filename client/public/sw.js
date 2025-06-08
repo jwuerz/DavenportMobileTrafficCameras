@@ -119,8 +119,18 @@ self.addEventListener('push', function(event) {
     icon: '/favicon.ico',
     badge: '/favicon.ico',
     tag: 'camera-update',
-    requireInteraction: true,
-    data: data.data || {}
+    requireInteraction: false, // Changed to false for better Android compatibility
+    data: data.data || {},
+    actions: [
+      {
+        action: 'view_locations',
+        title: 'View Locations'
+      },
+      {
+        action: 'dismiss',
+        title: 'Dismiss'
+      }
+    ]
   };
 
   event.waitUntil(

@@ -69,53 +69,128 @@ export default function TestPage() {
     }
 
     try {
-      // Register service worker first if not already registered
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.register('/sw.js');
-          console.log('Service Worker registered:', registration);
-        } catch (error) {
-          console.log('Service Worker registration failed:', error);
-        }
-      }
+      // Check current permission status first
+      const currentPermission = Notification.permission;
+      console.log("Current notification permission:", currentPermission);
 
-      // Request permission if needed
-      let permission = Notification.permission;
-      if (permission === "default") {
-        permission = await Notification.requestPermission();
-      }
-
-      if (permission !== "granted") {
+      if (currentPermission === "denied") {
         toast({
           title: "Notifications Blocked",
-          description: "Please allow notifications to test this feature.",
+          description: "Please enable notifications in your browser settings: Menu > Settings > Site Settings > Notifications",
           variant: "destructive",
         });
         return;
       }
 
-      // Show test notification
-      const notification = new Notification("🚦 Test Notification", {
-        body: "Chrome notifications are working!",
-        icon: "/favicon.ico",
-        tag: "test-notification"
-      });
+      // Register service worker with better error handling
+      let swRegistration = null;
+      if ('serviceWorker' in navigator) {
+        try {
+          // Check if already registered
+          swRegistration = await navigator.serviceWorker.getRegistration('/sw.js');
+          if (!swRegistration) {
+            swRegistration = await navigator.serviceWorker.register('/sw.js', {
+              scope: '/'
+            });
+            console.log('Service Worker registered:', swRegistration);
+            // Wait for service worker to be ready
+            await navigator.serviceWorker.ready;
+          } else {
+            console.log('Service Worker already registered:', swRegistration);
+          }
+        } catch (error) {
+          console.error('Service Worker registration failed:', error);
+          toast({
+            title: "Service Worker Failed",
+            description: "Background notifications may not work. Try refreshing the page.",
+            variant: "destructive",
+          });
+        }
+      }
 
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-      };
+      // Request permission if needed
+      let permission = currentPermission;
+      if (permission === "default") {
+        console.log("Requesting notification permission...");
+        permission = await Notification.requestPermission();
+        console.log("Permission result:", permission);
+      }
 
-      toast({
-        title: "Chrome Notifications Working",
-        description: "Test notification sent successfully.",
-      });
+      if (permission !== "granted") {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        toast({
+          title: "Notifications Blocked",
+          description: isAndroid 
+            ? "Android: Go to Chrome Settings > Site Settings > Notifications and allow this site"
+            : "Please allow notifications in your browser settings.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Test notification creation with error handling
+      try {
+        const notification = new Notification("🚦 Test Notification", {
+          body: "Chrome notifications are working!",
+          icon: "/favicon.ico",
+          tag: "test-notification",
+          requireInteraction: false
+        });
+
+        notification.onclick = () => {
+          console.log("Notification clicked");
+          window.focus();
+          notification.close();
+        };
+
+        notification.onerror = (error) => {
+          console.error("Notification error:", error);
+        };
+
+        notification.onshow = () => {
+          console.log("Notification shown successfully");
+        };
+
+        toast({
+          title: "Chrome Notifications Working",
+          description: "Test notification sent successfully. Check your notification shade.",
+        });
+
+      } catch (notificationError) {
+        console.error("Notification creation failed:", notificationError);
+        
+        // Fallback: try using service worker to show notification
+        if (swRegistration) {
+          try {
+            await swRegistration.showNotification("🚦 Fallback Test Notification", {
+              body: "Service worker notifications are working!",
+              icon: "/favicon.ico",
+              tag: "test-notification-sw",
+              requireInteraction: false
+            });
+
+            toast({
+              title: "Service Worker Notifications Working",
+              description: "Fallback notification sent via service worker.",
+            });
+          } catch (swError) {
+            console.error("Service worker notification failed:", swError);
+            throw swError;
+          }
+        } else {
+          throw notificationError;
+        }
+      }
 
     } catch (error) {
       console.error("Chrome notification error:", error);
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      
       toast({
-        title: "Chrome Notification Failed",
-        description: "Check browser permissions and try again.",
+        title: "Notification Test Failed",
+        description: isAndroid 
+          ? "Android issue detected. Try: 1) Clear browser cache 2) Check Chrome notification settings 3) Restart browser"
+          : `Error: ${error.message || "Check browser permissions and try again."}`,
         variant: "destructive",
       });
     }
@@ -323,6 +398,15 @@ export default function TestPage() {
                 </div>
 
                 <div className="space-y-3 text-sm">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <h4 className="font-medium text-red-800 mb-2">Android Notification Issues:</h4>
+                    <ul className="space-y-1 text-red-700">
+                      <li>• <strong>Chrome Settings:</strong> Go to Chrome → Settings → Site Settings → Notifications</li>
+                      <li>• <strong>Clear Cache:</strong> Clear browser cache and cookies for this site</li>
+                      <li>• <strong>Battery Optimization:</strong> Disable battery optimization for Chrome</li>
+                      <li>• <strong>Do Not Disturb:</strong> Check that Do Not Disturb mode is off</li>
+                    </ul>
+                  </div>
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <h4 className="font-medium text-yellow-800 mb-2">Common Email Issues:</h4>
                     <ul className="space-y-1 text-yellow-700">
