@@ -79,7 +79,7 @@ export async function sendEmail(params: EmailParams): Promise<SendEmailResult> {
 
     const result = await response.json();
     console.log('Email sent successfully via Brevo:', result.messageId);
-    return { success: true, message: 'Email sent successfully', result };
+    return { success: true, message: 'Email sent successfully' };
   } catch (error: any) {
     console.error('Brevo email error:', error);
     return { success: false, error: { message: error.message || 'An unexpected error occurred' } };
@@ -308,8 +308,8 @@ export async function sendTestNotification(userEmail: string): Promise<SendEmail
   const testLocations: ScrapedLocation[] = currentLocations.map(location => ({
     address: location.address,
     type: location.type,
-    description: location.description,
-    schedule: location.schedule
+    description: location.description || 'Mobile camera location',
+    schedule: location.schedule || 'Check city website for schedule'
   }));
 
   return await sendCameraUpdateNotification(userEmail, testLocations);
