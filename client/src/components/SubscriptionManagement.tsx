@@ -91,20 +91,51 @@ export default function SubscriptionManagement() {
       const { notificationService } = await import("@/lib/notificationService");
       const result = await notificationService.requestPermissionAndGetToken();
       
-      if (result.granted && result.token) {
-        // Register FCM token with the user
-        await apiRequest("POST", "/api/register-fcm", {
-          email: subscription.email,
-          fcmToken: result.token
-        });
-        
-        // Test the notification
-        await notificationService.testNotification();
-        
-        toast({
-          title: "Push Notifications Enabled",
-          description: "You will now receive push notifications for camera updates.",
-        });
+      if (result.granted) {
+        if (result.token) {
+          // Register FCM token with the user
+          try {
+            await apiRequest("POST", "/api/register-fcm", {
+              email: subscription.email,
+              fcmToken: result.token
+            });
+            
+            // Test the notification
+            const testSuccess = await notificationService.testNotification();
+            
+            if (testSuccess) {
+              toast({
+                title: "Push Notifications Enabled",
+                description: "You will now receive push notifications for camera updates.",
+              });
+            } else {
+              toast({
+                title: "Push Notifications Enabled",
+                description: "Browser notifications are enabled. Firebase push is in development mode.",
+              });
+            }
+          } catch (registerError) {
+            console.error("FCM token registration failed:", registerError);
+            // Still enable basic browser notifications
+            await notificationService.testNotification();
+            toast({
+              title: "Basic Notifications Enabled",
+              description: "Browser notifications enabled. Advanced push features require Firebase setup.",
+            });
+          }
+        } else {
+          // No FCM token but permission granted - enable basic browser notifications
+          const testSuccess = await notificationService.testNotification();
+          
+          if (testSuccess) {
+            toast({
+              title: "Browser Notifications Enabled",
+              description: "You will receive notifications when the page is open. For background notifications, Firebase setup is required.",
+            });
+          } else {
+            throw new Error("Failed to test basic browser notifications");
+          }
+        }
       } else {
         toast({
           title: "Permission Required",
@@ -113,10 +144,10 @@ export default function SubscriptionManagement() {
         });
       }
     } catch (error) {
-      console.error("FCM registration error:", error);
+      console.error("Notification setup error:", error);
       toast({
         title: "Setup Failed",
-        description: "Failed to enable push notifications. Please try again.",
+        description: "Firebase is not configured. Only email notifications are available.",
         variant: "destructive",
       });
     }

@@ -51,10 +51,8 @@ export class NotificationService {
       if (!this.initialized) {
         const initialized = await this.initialize();
         if (!initialized) {
-          return { 
-            granted: false, 
-            error: 'Push notification service is not available. Please check your internet connection.' 
-          };
+          console.log('Firebase not configured, using browser notifications only');
+          // Continue with browser-only notifications
         }
       }
 
@@ -74,16 +72,22 @@ export class NotificationService {
         }
       }
 
-      const token = await getFirebaseToken();
-      if (token) {
-        this.token = token;
-        return { granted: true, token };
-      } else {
-        return { 
-          granted: true, 
-          error: 'Push notification setup incomplete. You may still receive browser notifications.' 
-        };
+      // Try to get Firebase token if available
+      try {
+        const token = await getFirebaseToken();
+        if (token) {
+          this.token = token;
+          return { granted: true, token };
+        }
+      } catch (error) {
+        console.log('Firebase token unavailable, using browser notifications only:', error);
       }
+      
+      // Return success for browser notifications even without Firebase token
+      return { 
+        granted: true, 
+        error: undefined // No error, just no advanced push features
+      };
     } catch (error) {
       console.error('Error requesting notification permission:', error);
       return { 
