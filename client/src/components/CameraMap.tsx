@@ -113,13 +113,6 @@ export default function CameraMap() {
     }
   });
 
-  // Fetch all deployments for combined view
-  const { data: allDeployments = [], isLoading: allLoading } = useQuery({
-    queryKey: ['deployments', 'all'],
-    queryFn: () => fetch('/api/deployments').then(res => res.json()),
-    enabled: selectedTab === 'combined'
-  });
-
   const getDisplayData = () => {
     switch (selectedTab) {
       case 'current':
@@ -128,8 +121,6 @@ export default function CameraMap() {
         return { deployments: historicalDeployments, loading: historicalLoading };
       case 'range':
         return { deployments: rangeDeployments, loading: rangeLoading };
-      case 'combined':
-        return { deployments: allDeployments, loading: allLoading };
       default:
         return { deployments: [], loading: false };
     }
@@ -142,10 +133,10 @@ export default function CameraMap() {
   );
 
   const getMarkerIcon = (deployment: CameraDeployment) => {
-    if (selectedTab === 'combined') {
+    if (selectedTab === 'historical') {
       return deployment.isActive ? currentMarker : historicalMarker;
     }
-    return selectedTab === 'current' ? currentMarker : historicalMarker;
+    return currentMarker;
   };
 
   const getTypeColor = (type: string) => {
@@ -165,11 +156,10 @@ export default function CameraMap() {
         </CardHeader>
         <CardContent>
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-            <TabsList className={`grid w-full ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
+            <TabsList className={`grid w-full ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
               <TabsTrigger value="current">{isMobile ? 'Current' : 'Current Locations'}</TabsTrigger>
               <TabsTrigger value="historical">Historical</TabsTrigger>
               {!isMobile && <TabsTrigger value="range">Date Range</TabsTrigger>}
-              {!isMobile && <TabsTrigger value="combined">All Overlaid</TabsTrigger>}
             </TabsList>
             
             {isMobile && (
@@ -181,14 +171,6 @@ export default function CameraMap() {
                   className="flex-1"
                 >
                   Date Range
-                </Button>
-                <Button
-                  variant={selectedTab === 'combined' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTab('combined')}
-                  className="flex-1"
-                >
-                  All Overlaid
                 </Button>
               </div>
             )}
@@ -313,7 +295,7 @@ export default function CameraMap() {
                 </Card>
               </div>
 
-              {selectedTab === 'combined' && (
+              {selectedTab === 'historical' && (
                 <div className="flex gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-red-500 rounded-full"></div>
