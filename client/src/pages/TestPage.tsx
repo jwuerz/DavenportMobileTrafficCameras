@@ -11,6 +11,51 @@ export default function TestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  const testFirebaseNotification = async () => {
+    console.log("Firebase notification button clicked");
+    setIsLoading(true);
+    
+    try {
+      const { notificationService } = await import("@/lib/notificationService");
+      
+      // Initialize and request permission
+      const result = await notificationService.requestPermissionAndGetToken();
+      
+      if (result.granted && result.token) {
+        // Test local notification first
+        const testSuccess = await notificationService.testNotification();
+        
+        if (testSuccess) {
+          toast({
+            title: "Firebase Notifications Enabled",
+            description: "You will receive push notifications for camera updates.",
+          });
+        } else {
+          toast({
+            title: "Local Test Failed",
+            description: "Check browser permissions and try again.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Permission Required",
+          description: result.error || "Please allow notifications to receive alerts.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Firebase notification error:", error);
+      toast({
+        title: "Firebase Setup Failed",
+        description: "Configuration may be missing. Using fallback notifications.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const testChromeNotification = async () => {
     console.log("Chrome notification button clicked");
     
@@ -207,30 +252,38 @@ export default function TestPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Chrome Notifications Test */}
+          {/* Firebase Push Notifications Test */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Bell className="h-5 w-5 mr-2 text-blue-600" />
-                Chrome Notifications
+                Firebase Push Notifications
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">
-                Test browser notification functionality. This will request permission if not already granted.
+                Test Firebase push notification functionality. This will request permission and register for real-time notifications.
               </p>
               <Button 
-                onClick={() => {
-                  console.log("Button clicked!");
-                  testChromeNotification();
-                }} 
+                onClick={testFirebaseNotification}
                 className="w-full"
                 type="button"
               >
-                Test Chrome Notification
+                Test Firebase Notification
+              </Button>
+              <Button 
+                onClick={() => {
+                  console.log("Legacy notification button clicked!");
+                  testChromeNotification();
+                }} 
+                variant="outline"
+                className="w-full"
+                type="button"
+              >
+                Test Legacy Browser Notification
               </Button>
               <div className="text-xs text-gray-500">
-                Note: Make sure your browser allows notifications for this site.
+                Firebase notifications work across devices and browsers, even when the page is closed.
               </div>
             </CardContent>
           </Card>

@@ -43,10 +43,30 @@ export default function EmailSubscription() {
     setIsSubmitting(true);
     try {
       await apiRequest("POST", "/api/subscribe", data);
-      toast({
-        title: "Subscription Successful!",
-        description: "You will receive email notifications when camera locations change.",
-      });
+      
+      // Try to register FCM token for push notifications
+      try {
+        const { notificationService } = await import("@/lib/notificationService");
+        const success = await notificationService.subscribeToNotifications(data.email);
+        if (success) {
+          toast({
+            title: "Subscription Successful!",
+            description: "You will receive email and push notifications when camera locations change.",
+          });
+        } else {
+          toast({
+            title: "Subscription Successful!",
+            description: "You will receive email notifications. Enable push notifications below for instant alerts.",
+          });
+        }
+      } catch (fcmError) {
+        console.log("FCM registration optional:", fcmError);
+        toast({
+          title: "Subscription Successful!",
+          description: "You will receive email notifications when camera locations change.",
+        });
+      }
+      
       form.reset();
     } catch (error) {
       toast({
