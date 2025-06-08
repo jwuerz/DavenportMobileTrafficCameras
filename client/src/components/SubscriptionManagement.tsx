@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, Settings, Pause, Trash2 } from "lucide-react";
+import { Search, Settings, Pause, Trash2, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -218,6 +218,14 @@ export default function SubscriptionManagement() {
                   >
                     <Pause className="mr-2 h-4 w-4" />
                     {subscription.isActive ? "Pause Notifications" : "Resume Notifications"}
+                  </Button>
+                  <Button
+                    onClick={handleEnablePushNotifications}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Bell className="mr-2 h-4 w-4" />
+                    Enable Push Notifications
                   </Button>
                   <Button
                     onClick={handleUnsubscribe}
