@@ -249,6 +249,10 @@ function generateHtmlEmailContent(locations: ScrapedLocation[]): string {
          style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-right: 8px; display: inline-block;">
         View Current Locations
       </a>
+      <a href="https://davenportcams.replit.app/history" 
+         style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-right: 8px; display: inline-block;">
+        View on Map
+      </a>
       <a href="#manage-subscription" 
          style="background-color: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
         Manage Subscription
