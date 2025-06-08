@@ -433,6 +433,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Force refresh - clear all deployments and rescrape
+  app.post("/api/deployments/force-refresh", async (req, res) => {
+    try {
+      console.log('Starting force refresh - clearing all deployments and rescaping...');
+      
+      // Clear all existing camera locations and deployments
+      await storage.clearAllCameraLocations();
+      await storage.clearHistoricalDeployments();
+      
+      console.log('Cleared all existing data, starting fresh scrape...');
+      
+      // Force rescrape and reinitialize
+      const { scraper } = await import('./scraper');
+      await scraper.initializeLocations();
+      
+      // Get the fresh data
+      const newLocations = await storage.getActiveCameraLocations();
+      const newDeployments = await storage.getCurrentDeployments();
+      
+      console.log(`Force refresh completed. Created ${newLocations.length} locations and ${newDeployments.length} deployments.`);
+      
+      res.json({ 
+        message: `Force refresh completed successfully. Created ${newLocations.length} locations and ${newDeployments.length} deployments.`,
+        locations: newLocations.length,
+        deployments: newDeployments.length
+      });
+    } catch (error) {
+      console.error("Error during force refresh:", error);
+      res.status(500).json({ message: "Failed to complete force refresh" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
