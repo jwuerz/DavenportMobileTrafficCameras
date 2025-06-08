@@ -5,12 +5,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 
 // Initialize Firebase in service worker
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCapElwmFaE0C8ADqawdTePBaUYrgmTuKw",
+  authDomain: "davenport-camera-alerts.firebaseapp.com",
+  projectId: "davenport-camera-alerts",
+  storageBucket: "davenport-camera-alerts.firebasestorage.app",
+  messagingSenderId: "339062561251",
+  appId: "1:339062561251:web:0913ec30efe9de699928d6"
 };
 
 // Check if Firebase is already initialized
