@@ -281,6 +281,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Analyze deployment data for duplicates and configuration issues
+  app.get("/api/deployments/analyze", async (req, res) => {
+    try {
+      const allDeployments = await storage.getAllCameraDeployments();
+      const currentDeployments = await storage.getCurrentDeployments();
+      
+      // Group by address to find duplicates
+      const groupedByAddress = allDeployments.reduce((acc, deployment) => {
+        const normalizedAddress = deployment.address.toLowerCase().trim();
+        if (!acc[normalizedAddress]) {
+          acc[normalizedAddress] = [];
+        }
+        acc[normalizedAddress].push(deployment);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      // Find addresses with multiple deployments
+      const duplicateAddresses = Object.entries(groupedByAddress)
+        .filter(([_, deployments]) => deployments.length > 1)
+        .map(([address, deployments]) => ({
+          address,
+          count: deployments.length,
+          deployments: deployments.map(d => ({
+            id: d.id,
+            startDate: d.startDate,
+            endDate: d.endDate,
+            isActive: d.isActive,
+            weekOfYear: d.weekOfYear
+          }))
+        }));
+
+      // Find deployments missing coordinates
+      const missingCoordinates = allDeployments.filter(d => 
+        !d.latitude || !d.longitude || 
+        isNaN(parseFloat(d.latitude)) || isNaN(parseFloat(d.longitude))
+      );
+
+      // Find overlapping active deployments (same address, both active)
+      const overlappingActive = Object.entries(groupedByAddress)
+        .filter(([_, deployments]) => 
+          deployments.filter(d => d.isActive).length > 1
+        )
+        .map(([address, deployments]) => ({
+          address,
+          activeDeployments: deployments.filter(d => d.isActive)
+        }));
+
+      const analysis = {
+        totalDeployments: allDeployments.length,
+        currentActiveDeployments: currentDeployments.length,
+        uniqueAddresses: Object.keys(groupedByAddress).length,
+        duplicateAddresses,
+        missingCoordinates: missingCoordinates.map(d => ({
+          id: d.id,
+          address: d.address,
+          startDate: d.startDate,
+          latitude: d.latitude,
+          longitude: d.longitude
+        })),
+        overlappingActive,
+        summary: {
+          hasDuplicates: duplicateAddresses.length > 0,
+          hasOverlappingActive: overlappingActive.length > 0,
+          missingCoordinatesCount: missingCoordinates.length
+        }
+      };
+
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing deployments:", error);
+      res.status(500).json({ message: "Failed to analyze deployments" });
+    }
+  });
+
   // Clear historical deployment data (admin endpoint)
   app.post("/api/clear-deployment-history", async (req, res) => {
     try {

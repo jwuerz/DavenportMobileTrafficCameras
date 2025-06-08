@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import CameraHistory from "@/pages/CameraHistory";
+import DeploymentAnalysis from "./pages/DeploymentAnalysis";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -12,6 +13,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/history" component={CameraHistory} />
+      <Route path="/analysis" component={DeploymentAnalysis} />
       <Route component={NotFound} />
     </Switch>
   );
