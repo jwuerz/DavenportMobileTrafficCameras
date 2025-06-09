@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, Settings, Pause, Trash2, Bell } from "lucide-react";
+import { Search, Settings, Pause, Trash2, Bell, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -29,6 +29,8 @@ interface UserSubscription {
 export default function SubscriptionManagement() {
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(false);
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<LookupFormData>({
@@ -44,6 +46,7 @@ export default function SubscriptionManagement() {
       const response = await apiRequest("POST", "/api/subscription/lookup", data);
       const userData = await response.json();
       setSubscription(userData);
+      setPushNotificationsEnabled(false); // Reset state for new subscription
       toast({
         title: "Subscription Found",
         description: "Your subscription details have been loaded.",
@@ -88,6 +91,7 @@ export default function SubscriptionManagement() {
     if (!subscription) return;
 
     console.log("Push notification button clicked");
+    setIsEnablingPush(true);
 
     if (!("Notification" in window)) {
       toast({
@@ -95,6 +99,7 @@ export default function SubscriptionManagement() {
         description: "Your browser doesn't support notifications.",
         variant: "destructive",
       });
+      setIsEnablingPush(false);
       return;
     }
 
@@ -109,6 +114,7 @@ export default function SubscriptionManagement() {
           description: "Please enable notifications in your browser settings: Menu > Settings > Site Settings > Notifications",
           variant: "destructive",
         });
+        setIsEnablingPush(false);
         return;
       }
 
@@ -153,11 +159,14 @@ export default function SubscriptionManagement() {
             : "Please allow notifications in your browser settings.",
           variant: "destructive",
         });
+        setIsEnablingPush(false);
         return;
       }
 
       // Try Firebase FCM registration
       let fcmToken = null;
+      let notificationSuccess = false;
+      
       try {
         const { notificationService } = await import("@/lib/notificationService");
         const result = await notificationService.requestPermissionAndGetToken();
@@ -172,59 +181,80 @@ export default function SubscriptionManagement() {
             fcmToken: fcmToken
           });
           
+          // Send welcome notification
+          const welcomeNotification = new Notification("🚦 Welcome to Davenport Camera Alerts!", {
+            body: "You're now subscribed to push notifications for camera location updates. We'll notify you when camera locations change.",
+            icon: "/favicon.ico",
+            tag: "welcome-notification",
+            requireInteraction: false
+          });
+
+          welcomeNotification.onclick = () => {
+            window.focus();
+            welcomeNotification.close();
+          };
+
+          setPushNotificationsEnabled(true);
+          notificationSuccess = true;
+          
           toast({
             title: "Push Notifications Enabled",
             description: "You will now receive push notifications for camera updates.",
           });
-          return;
         }
       } catch (firebaseError) {
         console.log("Firebase FCM failed, falling back to browser notifications:", firebaseError);
       }
 
-      // Fallback to basic browser notifications
-      try {
-        const notification = new Notification("🚦 Test Notification", {
-          body: "Browser notifications are working!",
-          icon: "/favicon.ico",
-          tag: "test-notification",
-          requireInteraction: false
-        });
+      // Fallback to basic browser notifications if Firebase failed
+      if (!notificationSuccess) {
+        try {
+          const notification = new Notification("🚦 Welcome to Davenport Camera Alerts!", {
+            body: "You're now subscribed to browser notifications for camera location updates.",
+            icon: "/favicon.ico",
+            tag: "welcome-notification",
+            requireInteraction: false
+          });
 
-        notification.onclick = () => {
-          console.log("Notification clicked");
-          window.focus();
-          notification.close();
-        };
+          notification.onclick = () => {
+            console.log("Notification clicked");
+            window.focus();
+            notification.close();
+          };
 
-        toast({
-          title: "Browser Notifications Enabled",
-          description: "Basic notifications are working. You'll receive alerts when the page is open.",
-        });
+          setPushNotificationsEnabled(true);
+          
+          toast({
+            title: "Browser Notifications Enabled",
+            description: "Basic notifications are working. You'll receive alerts when the page is open.",
+          });
 
-      } catch (notificationError) {
-        console.error("Notification creation failed:", notificationError);
-        
-        // Final fallback: try using service worker to show notification
-        if (swRegistration) {
-          try {
-            await swRegistration.showNotification("🚦 Fallback Test Notification", {
-              body: "Service worker notifications are working!",
-              icon: "/favicon.ico",
-              tag: "test-notification-sw",
-              requireInteraction: false
-            });
+        } catch (notificationError) {
+          console.error("Notification creation failed:", notificationError);
+          
+          // Final fallback: try using service worker to show notification
+          if (swRegistration) {
+            try {
+              await swRegistration.showNotification("🚦 Welcome to Davenport Camera Alerts!", {
+                body: "You're now subscribed to notifications for camera location updates.",
+                icon: "/favicon.ico",
+                tag: "welcome-notification-sw",
+                requireInteraction: false
+              });
 
-            toast({
-              title: "Service Worker Notifications Working",
-              description: "Fallback notification sent via service worker.",
-            });
-          } catch (swError) {
-            console.error("Service worker notification failed:", swError);
-            throw swError;
+              setPushNotificationsEnabled(true);
+
+              toast({
+                title: "Service Worker Notifications Working",
+                description: "Fallback notification sent via service worker.",
+              });
+            } catch (swError) {
+              console.error("Service worker notification failed:", swError);
+              throw swError;
+            }
+          } else {
+            throw notificationError;
           }
-        } else {
-          throw notificationError;
         }
       }
 
@@ -239,6 +269,8 @@ export default function SubscriptionManagement() {
           : `Error: ${error.message || "Check browser permissions and try again."}`,
         variant: "destructive",
       });
+    } finally {
+      setIsEnablingPush(false);
     }
   };
 
@@ -379,11 +411,24 @@ export default function SubscriptionManagement() {
                   </Button>
                   <Button
                     onClick={handleEnablePushNotifications}
-                    variant="outline"
+                    disabled={pushNotificationsEnabled || isEnablingPush}
+                    variant={pushNotificationsEnabled ? "default" : "outline"}
                     size="sm"
+                    className={pushNotificationsEnabled ? "bg-green-600 hover:bg-green-700" : ""}
                   >
-                    <Bell className="mr-2 h-4 w-4" />
-                    Enable Push Notifications
+                    {isEnablingPush ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : pushNotificationsEnabled ? (
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Bell className="mr-2 h-4 w-4" />
+                    )}
+                    {isEnablingPush 
+                      ? "Enabling..." 
+                      : pushNotificationsEnabled 
+                        ? "Push Notifications Active" 
+                        : "Enable Push Notifications"
+                    }
                   </Button>
                   <Button
                     onClick={handleUnsubscribe}
