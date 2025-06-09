@@ -10,6 +10,8 @@ import FirebaseConfigTest from "@/components/FirebaseConfigTest";
 
 export default function TestPage() {
   const [testEmail, setTestEmail] = useState("");
+  const [customSubject, setCustomSubject] = useState("");
+  const [useCustomSubject, setUseCustomSubject] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -212,10 +214,15 @@ export default function TestPage() {
     setIsLoading(true);
 
     try {
+      const requestBody: any = { email: testEmail };
+      if (useCustomSubject && customSubject.trim()) {
+        requestBody.customSubject = customSubject.trim();
+      }
+
       const response = await fetch("/api/test-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: testEmail }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -376,6 +383,84 @@ export default function TestPage() {
                     placeholder="Enter email address"
                     className="w-full"
                   />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="useCustomSubject"
+                      checked={useCustomSubject}
+                      onChange={(e) => setUseCustomSubject(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor="useCustomSubject" className="text-sm font-medium text-gray-700">
+                      Use custom subject line (to test email threading prevention)
+                    </label>
+                  </div>
+                  
+                  {useCustomSubject && (
+                    <div>
+                      <label htmlFor="customSubject" className="block text-sm font-medium text-gray-700 mb-2">
+                        Custom Subject Line
+                      </label>
+                      <Input
+                        id="customSubject"
+                        type="text"
+                        value={customSubject}
+                        onChange={(e) => setCustomSubject(e.target.value)}
+                        placeholder={`Davenport Camera Locations Updated - 5 Locations (${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Tip: Try different dates/times to test how email clients handle threading
+                      </p>
+                      
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCustomSubject(`Davenport Camera Locations Updated - 5 Locations (${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`)}
+                        >
+                          Today's Date
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const now = new Date();
+                            setCustomSubject(`Davenport Camera Locations Updated - 5 Locations (${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })})`);
+                          }}
+                        >
+                          Date + Time
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const testDate = new Date();
+                            testDate.setDate(testDate.getDate() - Math.floor(Math.random() * 7) - 1);
+                            setCustomSubject(`Davenport Camera Locations Updated - 5 Locations (${testDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`);
+                          }}
+                        >
+                          Random Date
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="font-medium text-blue-800 mb-2">📧 Subject Line Testing</h4>
+                    <p className="text-blue-700 text-sm mb-2">
+                      <strong>Why emails stack:</strong> Email clients group messages with identical subject lines into conversation threads.
+                    </p>
+                    <p className="text-blue-700 text-sm">
+                      <strong>Solution:</strong> We now automatically add the date to subject lines. Test with custom subjects to verify this prevents threading.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-3">

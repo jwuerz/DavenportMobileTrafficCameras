@@ -288,14 +288,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Test camera update email endpoint
   app.post('/api/test-email', async (req, res) => {
-    const { email } = req.body;
+    const { email, customSubject } = req.body;
 
     if (!email) {
       return res.status(400).json({ error: 'Email address is required' });
     }
 
     try {
-      const result = await sendTestNotification(email);
+      const result = await sendTestNotification(email, customSubject);
       if (result.success) {
         res.json({ message: 'Test email sent successfully' });
       } else {

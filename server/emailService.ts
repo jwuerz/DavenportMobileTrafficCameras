@@ -88,11 +88,13 @@ export async function sendEmail(params: EmailParams): Promise<SendEmailResult> {
 
 export async function sendCameraUpdateNotification(
   userEmail: string, 
-  locations: ScrapedLocation[]
+  locations: ScrapedLocation[],
+  customSubject?: string
 ): Promise<SendEmailResult> {
   const fromEmail = process.env.FROM_EMAIL || 'davcamalerts@charitable.tech';
 
-  const subject = `Davenport Camera Locations Updated - ${locations.length} Locations This Week`;
+  // Use custom subject if provided (for testing), otherwise generate with date
+  const subject = customSubject || `Davenport Camera Locations Updated - ${locations.length} Locations (${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`;
 
   const textContent = generateTextEmailContent(locations);
   const htmlContent = generateHtmlEmailContent(locations);
@@ -300,7 +302,7 @@ function getTypeLabel(type: string): string {
   }
 }
 
-export async function sendTestNotification(userEmail: string): Promise<SendEmailResult> {
+export async function sendTestNotification(userEmail: string, customSubject?: string): Promise<SendEmailResult> {
   // Get actual current locations from the database
   const currentLocations = await storage.getActiveCameraLocations();
   
@@ -312,7 +314,7 @@ export async function sendTestNotification(userEmail: string): Promise<SendEmail
     schedule: location.schedule || 'Check city website for schedule'
   }));
 
-  return await sendCameraUpdateNotification(userEmail, testLocations);
+  return await sendCameraUpdateNotification(userEmail, testLocations, customSubject);
 }
 
 export async function sendWelcomeEmail(userEmail: string): Promise<SendEmailResult> {
