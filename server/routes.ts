@@ -940,6 +940,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification fixer endpoints
+  app.get("/api/notification-check", async (req, res) => {
+    try {
+      const { notificationFixer } = await import('./notificationFixer');
+      const status = await notificationFixer.checkTodaysNotifications();
+      res.json(status);
+    } catch (error) {
+      console.error("Error checking today's notifications:", error);
+      res.status(500).json({ message: "Failed to check notifications" });
+    }
+  });
+
+  app.post("/api/send-missed-notifications", async (req, res) => {
+    try {
+      const { notificationFixer } = await import('./notificationFixer');
+      const result = await notificationFixer.sendMissedNotifications();
+      
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(500).json(result);
+      }
+    } catch (error) {
+      console.error("Error sending missed notifications:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to send missed notifications",
+        error: (error as Error).message
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

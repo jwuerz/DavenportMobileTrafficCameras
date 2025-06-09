@@ -1,4 +1,5 @@
 import { storage } from './storage';
+import { db } from './db';
 import { sendCameraUpdateNotification } from './emailService';
 import { fcmService } from './fcmService';
 
@@ -29,7 +30,7 @@ export class NotificationTracker {
 
   private async getLastNotificationDate(): Promise<Date | null> {
     try {
-      const result = await storage.db.execute(`
+      const result = await db.execute(`
         SELECT MAX(sent_at) as last_notification 
         FROM notifications 
         WHERE subject LIKE '%Camera Location%'
@@ -49,7 +50,7 @@ export class NotificationTracker {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       
-      const deployments = await storage.db.execute(`
+      const deployments = await db.execute(`
         SELECT DISTINCT 
           address, 
           type, 
@@ -63,7 +64,7 @@ export class NotificationTracker {
       `, [todayStart.toISOString()]);
 
       if (deployments.rows.length > 0) {
-        const locations = deployments.rows.map(row => ({
+        const locations = deployments.rows.map((row: any) => ({
           address: row.address as string,
           type: row.type as string,
           description: row.description as string,
@@ -123,7 +124,6 @@ export class NotificationTracker {
               userId: user.id,
               subject: 'Camera Location Update',
               content: `Sent notification about ${locations.length} camera locations`,
-              sentAt: new Date().toISOString(),
               status: 'sent'
             });
           } else {
@@ -179,7 +179,7 @@ export class NotificationTracker {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       
-      const deployments = await storage.db.execute(`
+      const deployments = await db.execute(`
         SELECT DISTINCT 
           address, 
           type, 
@@ -200,7 +200,7 @@ export class NotificationTracker {
         };
       }
 
-      const locations = deployments.rows.map(row => ({
+      const locations = deployments.rows.map((row: any) => ({
         address: row.address as string,
         type: row.type as string,
         description: row.description as string,
@@ -219,7 +219,7 @@ export class NotificationTracker {
         details: {
           locationsFound: locations.length,
           scrapedAt: latestScrapedAt.toISOString(),
-          locations: locations.map(l => l.address)
+          locations: locations.map((l: any) => l.address)
         }
       };
       
@@ -239,7 +239,7 @@ export class NotificationTracker {
       todayStart.setHours(0, 0, 0, 0);
       
       // Get today's deployments
-      const deployments = await storage.db.execute(`
+      const deployments = await db.execute(`
         SELECT COUNT(*) as count, MAX(scraped_at) as latest_scrape
         FROM camera_deployments 
         WHERE scraped_at >= $1 
@@ -247,7 +247,7 @@ export class NotificationTracker {
       `, [todayStart.toISOString()]);
 
       // Get today's notifications
-      const notifications = await storage.db.execute(`
+      const notifications = await db.execute(`
         SELECT COUNT(*) as count, MAX(sent_at) as latest_notification
         FROM notifications 
         WHERE sent_at >= $1 
