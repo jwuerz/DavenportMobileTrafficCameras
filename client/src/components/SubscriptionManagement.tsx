@@ -87,67 +87,156 @@ export default function SubscriptionManagement() {
   const handleEnablePushNotifications = async () => {
     if (!subscription) return;
 
+    console.log("Push notification button clicked");
+
+    if (!("Notification" in window)) {
+      toast({
+        title: "Notifications Not Supported",
+        description: "Your browser doesn't support notifications.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const { notificationService } = await import("@/lib/notificationService");
-      const result = await notificationService.requestPermissionAndGetToken();
-      
-      if (result.granted) {
-        if (result.token) {
-          // Register FCM token with the user
-          try {
-            await apiRequest("POST", "/api/register-fcm", {
-              email: subscription.email,
-              fcmToken: result.token
-            });
-            
-            // Test the notification
-            const testSuccess = await notificationService.testNotification();
-            
-            if (testSuccess) {
-              toast({
-                title: "Push Notifications Enabled",
-                description: "You will now receive push notifications for camera updates.",
-              });
-            } else {
-              toast({
-                title: "Push Notifications Enabled",
-                description: "Browser notifications are enabled. Firebase push is in development mode.",
-              });
-            }
-          } catch (registerError) {
-            console.error("FCM token registration failed:", registerError);
-            // Still enable basic browser notifications
-            await notificationService.testNotification();
-            toast({
-              title: "Basic Notifications Enabled",
-              description: "Browser notifications enabled. Advanced push features require Firebase setup.",
-            });
-          }
-        } else {
-          // No FCM token but permission granted - enable basic browser notifications
-          const testSuccess = await notificationService.testNotification();
-          
-          if (testSuccess) {
-            toast({
-              title: "Browser Notifications Enabled",
-              description: "You will receive notifications when the page is open. For background notifications, Firebase setup is required.",
-            });
-          } else {
-            throw new Error("Failed to test basic browser notifications");
-          }
-        }
-      } else {
+      // Check current permission status first
+      const currentPermission = Notification.permission;
+      console.log("Current notification permission:", currentPermission);
+
+      if (currentPermission === "denied") {
         toast({
-          title: "Permission Required",
-          description: result.error || "Please allow notifications in your browser settings.",
+          title: "Notifications Blocked",
+          description: "Please enable notifications in your browser settings: Menu > Settings > Site Settings > Notifications",
           variant: "destructive",
         });
+        return;
       }
+
+      // Register service worker with better error handling
+      let swRegistration = null;
+      if ('serviceWorker' in navigator) {
+        try {
+          swRegistration = await navigator.serviceWorker.getRegistration('/sw.js');
+          if (!swRegistration) {
+            swRegistration = await navigator.serviceWorker.register('/sw.js', {
+              scope: '/'
+            });
+            console.log('Service Worker registered:', swRegistration);
+            await navigator.serviceWorker.ready;
+          } else {
+            console.log('Service Worker already registered:', swRegistration);
+          }
+        } catch (error) {
+          console.error('Service Worker registration failed:', error);
+          toast({
+            title: "Service Worker Failed",
+            description: "Background notifications may not work. Try refreshing the page.",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Request permission if needed
+      let permission = currentPermission;
+      if (permission === "default") {
+        console.log("Requesting notification permission...");
+        permission = await Notification.requestPermission();
+        console.log("Permission result:", permission);
+      }
+
+      if (permission !== "granted") {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        toast({
+          title: "Notifications Blocked",
+          description: isAndroid 
+            ? "Android: Go to Chrome Settings > Site Settings > Notifications and allow this site"
+            : "Please allow notifications in your browser settings.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Try Firebase FCM registration
+      let fcmToken = null;
+      try {
+        const { notificationService } = await import("@/lib/notificationService");
+        const result = await notificationService.requestPermissionAndGetToken();
+        
+        if (result.granted && result.token) {
+          fcmToken = result.token;
+          console.log("FCM token obtained successfully");
+          
+          // Register FCM token with the user
+          await apiRequest("POST", "/api/register-fcm", {
+            email: subscription.email,
+            fcmToken: fcmToken
+          });
+          
+          toast({
+            title: "Push Notifications Enabled",
+            description: "You will now receive push notifications for camera updates.",
+          });
+          return;
+        }
+      } catch (firebaseError) {
+        console.log("Firebase FCM failed, falling back to browser notifications:", firebaseError);
+      }
+
+      // Fallback to basic browser notifications
+      try {
+        const notification = new Notification("🚦 Test Notification", {
+          body: "Browser notifications are working!",
+          icon: "/favicon.ico",
+          tag: "test-notification",
+          requireInteraction: false
+        });
+
+        notification.onclick = () => {
+          console.log("Notification clicked");
+          window.focus();
+          notification.close();
+        };
+
+        toast({
+          title: "Browser Notifications Enabled",
+          description: "Basic notifications are working. You'll receive alerts when the page is open.",
+        });
+
+      } catch (notificationError) {
+        console.error("Notification creation failed:", notificationError);
+        
+        // Final fallback: try using service worker to show notification
+        if (swRegistration) {
+          try {
+            await swRegistration.showNotification("🚦 Fallback Test Notification", {
+              body: "Service worker notifications are working!",
+              icon: "/favicon.ico",
+              tag: "test-notification-sw",
+              requireInteraction: false
+            });
+
+            toast({
+              title: "Service Worker Notifications Working",
+              description: "Fallback notification sent via service worker.",
+            });
+          } catch (swError) {
+            console.error("Service worker notification failed:", swError);
+            throw swError;
+          }
+        } else {
+          throw notificationError;
+        }
+      }
+
     } catch (error) {
       console.error("Notification setup error:", error);
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      
       toast({
-        title: "Setup Failed",
-        description: "Firebase is not configured. Only email notifications are available.",
+        title: "Notification Setup Failed",
+        description: isAndroid 
+          ? "Android issue detected. Try: 1) Clear browser cache 2) Check Chrome notification settings 3) Restart browser"
+          : `Error: ${error.message || "Check browser permissions and try again."}`,
         variant: "destructive",
       });
     }
