@@ -128,23 +128,34 @@ export default function CameraMap() {
     }
   });
 
+  // Fetch stationary cameras (for historical view)
+  const { data: stationaryCameras = [], isLoading: stationaryLoading } = useQuery<StationaryCamera[]>({
+    queryKey: ['stationary-cameras'],
+    queryFn: () => fetch('/api/stationary-cameras').then(res => res.json()),
+    enabled: selectedTab === 'historical'
+  });
+
   const getDisplayData = () => {
     switch (selectedTab) {
       case 'current':
-        return { deployments: currentDeployments, loading: currentLoading };
+        return { deployments: currentDeployments, loading: currentLoading, stationary: [] };
       case 'historical':
-        return { deployments: historicalDeployments, loading: historicalLoading };
+        return { deployments: historicalDeployments, loading: historicalLoading || stationaryLoading, stationary: stationaryCameras };
       case 'range':
-        return { deployments: rangeDeployments, loading: rangeLoading };
+        return { deployments: rangeDeployments, loading: rangeLoading, stationary: [] };
       default:
-        return { deployments: [], loading: false };
+        return { deployments: [], loading: false, stationary: [] };
     }
   };
 
-  const { deployments, loading } = getDisplayData();
+  const { deployments, loading, stationary } = getDisplayData();
 
   const validDeployments = deployments.filter((d: CameraDeployment) => 
     d.latitude && d.longitude && !isNaN(parseFloat(d.latitude)) && !isNaN(parseFloat(d.longitude))
+  );
+
+  const validStationaryCameras = stationary.filter((s: StationaryCamera) => 
+    s.latitude && s.longitude && !isNaN(parseFloat(s.latitude)) && !isNaN(parseFloat(s.longitude))
   );
 
   const getMarkerIcon = (deployment: CameraDeployment) => {
@@ -152,6 +163,10 @@ export default function CameraMap() {
       return deployment.isActive ? currentMarker : historicalMarker;
     }
     return currentMarker;
+  };
+
+  const getStationaryMarkerIcon = (camera: StationaryCamera) => {
+    return redLightMarker;
   };
 
   const getTypeColor = (type: string) => {
@@ -251,7 +266,7 @@ export default function CameraMap() {
                     
                     {validDeployments.map((deployment: CameraDeployment) => (
                       <Marker
-                        key={`${deployment.id}-${deployment.startDate}`}
+                        key={`deployment-${deployment.id}-${deployment.startDate}`}
                         position={[parseFloat(deployment.latitude!), parseFloat(deployment.longitude!)]}
                         icon={getMarkerIcon(deployment)}
                       >
@@ -277,6 +292,34 @@ export default function CameraMap() {
                         </Popup>
                       </Marker>
                     ))}
+
+                    {validStationaryCameras.map((camera: StationaryCamera) => (
+                      <Marker
+                        key={`stationary-${camera.id}`}
+                        position={[parseFloat(camera.latitude!), parseFloat(camera.longitude!)]}
+                        icon={getStationaryMarkerIcon(camera)}
+                      >
+                        <Popup>
+                          <div className="space-y-2">
+                            <h3 className="font-semibold">{camera.address}</h3>
+                            <div className="flex gap-2">
+                              <Badge className="bg-red-600 text-white">
+                                {camera.type.replace('_', ' ')}
+                              </Badge>
+                              <Badge variant="outline">
+                                Stationary
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600">{camera.description}</p>
+                            <p className="text-sm"><strong>Schedule:</strong> {camera.schedule}</p>
+                            <div className="text-xs text-gray-500">
+                              <p><strong>Status:</strong> {camera.status}</p>
+                              {camera.installDate && <p><strong>Installed:</strong> {camera.installDate}</p>}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ))}
                   </MapContainer>
                 )}
               </div>
@@ -284,9 +327,11 @@ export default function CameraMap() {
               <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'}`}>
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">{validDeployments.length}</div>
+                    <div className="text-2xl font-bold">
+                      {validDeployments.length + (selectedTab === 'historical' ? validStationaryCameras.length : 0)}
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      {selectedTab === 'current' ? 'Active Locations' : 'Total Deployments'}
+                      {selectedTab === 'current' ? 'Active Locations' : 'Total Camera Locations'}
                     </p>
                   </CardContent>
                 </Card>
@@ -303,22 +348,28 @@ export default function CameraMap() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-2xl font-bold">
-                      {deployments.filter((d: CameraDeployment) => !d.latitude || !d.longitude).length}
+                      {selectedTab === 'historical' ? validStationaryCameras.length : deployments.filter((d: CameraDeployment) => !d.latitude || !d.longitude).length}
                     </div>
-                    <p className="text-xs text-muted-foreground">Locations Without Coordinates</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedTab === 'historical' ? 'Red Light Cameras' : 'Locations Without Coordinates'}
+                    </p>
                   </CardContent>
                 </Card>
               </div>
 
               {selectedTab === 'historical' && (
-                <div className="flex gap-4 text-sm">
+                <div className="flex flex-wrap gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-red-500 rounded-full"></div>
                     <span>Current Mobile Camera Locations</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-gray-500 rounded-full"></div>
-                    <span>Total Historical Camera Locations</span>
+                    <span>Historical Mobile Camera Locations</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-600 rounded-full"></div>
+                    <span>Red Light Cameras (Stationary)</span>
                   </div>
                 </div>
               )}
