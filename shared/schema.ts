@@ -50,23 +50,6 @@ export const cameraDeployments = pgTable("camera_deployments", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
-// Stationary cameras (red light, fixed speed cameras)
-export const stationaryCameras = pgTable("stationary_cameras", {
-  id: serial("id").primaryKey(),
-  address: text("address").notNull(),
-  type: text("type").notNull(), // 'red_light', 'fixed'
-  description: text("description"),
-  schedule: text("schedule"),
-  installDate: date("install_date"),
-  status: text("status").notNull().default("active"), // 'active', 'inactive', 'unconfirmed'
-  // Geographic coordinates for mapping
-  latitude: numeric("latitude", { precision: 10, scale: 8 }),
-  longitude: numeric("longitude", { precision: 11, scale: 8 }),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  lastUpdated: timestamp("last_updated").notNull().defaultNow(),
-});
-
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -87,12 +70,6 @@ export const insertCameraDeploymentSchema = createInsertSchema(cameraDeployments
   scrapedAt: true,
 });
 
-export const insertStationaryCameraSchema = createInsertSchema(stationaryCameras).omit({
-  id: true,
-  createdAt: true,
-  lastUpdated: true,
-});
-
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertCameraLocation = z.infer<typeof insertCameraLocationSchema>;
@@ -101,5 +78,3 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertCameraDeployment = z.infer<typeof insertCameraDeploymentSchema>;
 export type CameraDeployment = typeof cameraDeployments.$inferSelect;
-export type InsertStationaryCamera = z.infer<typeof insertStationaryCameraSchema>;
-export type StationaryCamera = typeof stationaryCameras.$inferSelect;
