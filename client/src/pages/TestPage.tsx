@@ -51,7 +51,7 @@ export default function TestPage() {
       console.error("Firebase notification error:", error);
       toast({
         title: "Registration Failed",
-        description: `Could not register for notifications: ${error.message || 'Unknown error'}`,
+        description: `Could not register for notifications: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
