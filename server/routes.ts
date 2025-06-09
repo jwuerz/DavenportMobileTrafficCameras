@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { scheduler } from "./scheduler";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, insertStationaryCameraSchema } from "@shared/schema";
 import { sendTestNotification, sendWelcomeEmail } from "./emailService";
 import { fcmService } from "./fcmService";
 import { z } from "zod";
@@ -730,6 +730,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error testing push notification:", error);
       res.status(500).json({ message: "Failed to test push notification" });
+    }
+  });
+
+  // Stationary camera endpoints
+
+  // Get all stationary cameras
+  app.get("/api/stationary-cameras", async (req, res) => {
+    try {
+      const cameras = await storage.getAllStationaryCameras();
+      res.json(cameras);
+    } catch (error) {
+      console.error("Error fetching stationary cameras:", error);
+      res.status(500).json({ message: "Failed to fetch stationary cameras" });
+    }
+  });
+
+  // Get active stationary cameras
+  app.get("/api/stationary-cameras/active", async (req, res) => {
+    try {
+      const cameras = await storage.getActiveStationaryCameras();
+      res.json(cameras);
+    } catch (error) {
+      console.error("Error fetching active stationary cameras:", error);
+      res.status(500).json({ message: "Failed to fetch active stationary cameras" });
+    }
+  });
+
+  // Create new stationary camera
+  app.post("/api/stationary-cameras", async (req, res) => {
+    try {
+      const cameraData = insertStationaryCameraSchema.parse(req.body);
+      const newCamera = await storage.createStationaryCamera(cameraData);
+      res.json({ message: "Stationary camera created successfully", camera: newCamera });
+    } catch (error) {
+      console.error("Error creating stationary camera:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid camera data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create stationary camera" });
+      }
+    }
+  });
+
+  // Update stationary camera
+  app.put("/api/stationary-cameras/:id", async (req, res) => {
+    try {
+      const cameraId = parseInt(req.params.id);
+      const updates = insertStationaryCameraSchema.partial().parse(req.body);
+      
+      const updatedCamera = await storage.updateStationaryCamera(cameraId, updates);
+      if (!updatedCamera) {
+        return res.status(404).json({ message: "Stationary camera not found" });
+      }
+
+      res.json({ message: "Stationary camera updated successfully", camera: updatedCamera });
+    } catch (error) {
+      console.error("Error updating stationary camera:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid update data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update stationary camera" });
+      }
+    }
+  });
+
+  // Delete stationary camera
+  app.delete("/api/stationary-cameras/:id", async (req, res) => {
+    try {
+      const cameraId = parseInt(req.params.id);
+      const deleted = await storage.deleteStationaryCamera(cameraId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Stationary camera not found" });
+      }
+
+      res.json({ message: "Stationary camera deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting stationary camera:", error);
+      res.status(500).json({ message: "Failed to delete stationary camera" });
+    }
+  });
+
+  // Bulk import stationary cameras
+  app.post("/api/stationary-cameras/bulk-import", async (req, res) => {
+    try {
+      const { cameras } = req.body;
+      
+      if (!Array.isArray(cameras)) {
+        return res.status(400).json({ message: "Cameras must be an array" });
+      }
+
+      const results = [];
+      for (const cameraData of cameras) {
+        try {
+          const validatedCamera = insertStationaryCameraSchema.parse(cameraData);
+          const newCamera = await storage.createStationaryCamera(validatedCamera);
+          results.push({ success: true, camera: newCamera });
+        } catch (error) {
+          results.push({ success: false, error: error.message, data: cameraData });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const errorCount = results.filter(r => !r.success).length;
+
+      res.json({ 
+        message: `Bulk import completed. ${successCount} cameras created, ${errorCount} errors.`,
+        results,
+        summary: { success: successCount, errors: errorCount }
+      });
+    } catch (error) {
+      console.error("Error in bulk import:", error);
+      res.status(500).json({ message: "Failed to bulk import stationary cameras" });
     }
   });
 
