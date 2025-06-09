@@ -154,12 +154,24 @@ export default function CameraMap() {
     d.latitude && d.longitude && !isNaN(parseFloat(d.latitude)) && !isNaN(parseFloat(d.longitude))
   );
 
+  // Debug log for historical view
+  if (selectedTab === 'historical' && validDeployments.length > 0) {
+    console.log('Historical deployments:', validDeployments.map(d => ({
+      id: d.id,
+      address: d.address,
+      isActive: d.isActive,
+      startDate: d.startDate,
+      endDate: d.endDate
+    })));
+  }
+
   const validStationaryCameras = stationary.filter((s: StationaryCamera) => 
     s.latitude && s.longitude && !isNaN(parseFloat(s.latitude)) && !isNaN(parseFloat(s.longitude))
   );
 
   const getMarkerIcon = (deployment: CameraDeployment) => {
     if (selectedTab === 'historical') {
+      // For historical view, show current active deployments as red, inactive as gray
       return deployment.isActive ? currentMarker : historicalMarker;
     }
     return currentMarker;

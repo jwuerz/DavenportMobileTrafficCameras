@@ -321,8 +321,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get historical camera deployments (all deployments for historical view)
   app.get("/api/deployments/historical", async (req, res) => {
     try {
-      const deployments = await storage.getAllCameraDeployments();
-      res.json(deployments);
+      const allDeployments = await storage.getAllCameraDeployments();
+      const currentDeployments = await storage.getCurrentDeployments();
+      
+      // Mark deployments as active if they're in the current deployments list
+      const currentDeploymentIds = new Set(currentDeployments.map(d => d.id));
+      
+      const deploymentsWithCorrectStatus = allDeployments.map(deployment => ({
+        ...deployment,
+        isActive: currentDeploymentIds.has(deployment.id)
+      }));
+      
+      res.json(deploymentsWithCorrectStatus);
     } catch (error) {
       console.error("Error fetching historical deployments:", error);
       res.status(500).json({ message: "Failed to fetch historical deployments" });
