@@ -104,10 +104,31 @@ export const getFirebaseToken = async () => {
       throw new Error('VAPID key not configured. Push notifications require a VAPID key.');
     }
 
+    // Register the Firebase messaging service worker
+    let registration = null;
+    if ('serviceWorker' in navigator) {
+      try {
+        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+          scope: '/firebase-cloud-messaging-push-scope'
+        });
+        console.log('Firebase service worker registered successfully');
+      } catch (swError) {
+        console.error('Firebase service worker registration failed:', swError);
+        // Try to get existing registration
+        registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+      }
+    }
+
     console.log('Requesting FCM token with VAPID key...');
-    const token = await getToken(messaging, {
+    const tokenOptions: any = {
       vapidKey: vapidKey
-    });
+    };
+    
+    if (registration) {
+      tokenOptions.serviceWorkerRegistration = registration;
+    }
+
+    const token = await getToken(messaging, tokenOptions);
 
     if (token) {
       console.log('FCM token generated successfully:', token.substring(0, 20) + '...');
