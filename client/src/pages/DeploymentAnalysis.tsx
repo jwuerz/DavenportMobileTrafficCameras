@@ -65,6 +65,24 @@ export default function DeploymentAnalysis() {
     }
   });
 
+  const historicalCleanupMutation = useMutation({
+    mutationFn: () => fetch('/api/deployments/cleanup-historical', { method: 'POST' }).then(res => res.json()),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      toast({
+        title: "Historical Cleanup Successful",
+        description: `Removed ${data.removed} duplicate historical deployments. Current active deployments preserved.`,
+      })
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Historical Cleanup Failed",
+        description: "Failed to clean historical duplicates.",
+      })
+    }
+  });
+
 
   if (isLoading) {
     return (
@@ -111,15 +129,26 @@ export default function DeploymentAnalysis() {
         </div>
 
         {analysis?.summary.hasDuplicates && (
-          <Button 
-            onClick={() => cleanupMutation.mutate()}
-            disabled={cleanupMutation.isPending}
-            variant="destructive"
-            className="flex items-center gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            {cleanupMutation.isPending ? 'Cleaning...' : 'Clean Duplicates'}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => cleanupMutation.mutate()}
+              disabled={cleanupMutation.isPending}
+              variant="destructive"
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              {cleanupMutation.isPending ? 'Cleaning...' : 'Clean All Duplicates'}
+            </Button>
+            <Button 
+              onClick={() => historicalCleanupMutation.mutate()}
+              disabled={historicalCleanupMutation.isPending}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              {historicalCleanupMutation.isPending ? 'Cleaning...' : 'Clean Historical Only'}
+            </Button>
+          </div>
         )}
       </div>
 
