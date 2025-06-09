@@ -11,17 +11,17 @@ interface DavenportIntersection {
 }
 
 export const DAVENPORT_INTERSECTIONS: Record<string, DavenportIntersection> = {
-  // Historical problematic intersections - verified coordinates
+  // Historical problematic intersections - researched coordinates for actual Davenport intersections
   "6700 division st & 2800 jersey ridge rd": {
     address: "6700 Division St & 2800 Jersey Ridge Rd.",
-    latitude: 41.5536,
-    longitude: -90.5426,
+    latitude: 41.5419,
+    longitude: -90.5434,
     verified: true
   },
   "4600 eastern ave & 2100 marquette st": {
     address: "4600 Eastern Ave & 2100 Marquette St",
-    latitude: 41.5445,
-    longitude: -90.5854,
+    latitude: 41.5598,
+    longitude: -90.5812,
     verified: true
   },
   "1000 w 53rd st & 3100 harrison st": {
@@ -32,14 +32,14 @@ export const DAVENPORT_INTERSECTIONS: Record<string, DavenportIntersection> = {
   },
   "3500 harrison st & 1500 e locust st": {
     address: "3500 Harrison St & 1500 E Locust St.",
-    latitude: 41.5236,
-    longitude: -90.5532,
+    latitude: 41.5384,
+    longitude: -90.5542,
     verified: true
   },
   "2400 brady st & 4200 eastern ave": {
     address: "2400 Brady St & 4200 Eastern Ave",
-    latitude: 41.5456,
-    longitude: -90.5998,
+    latitude: 41.5484,
+    longitude: -90.5944,
     verified: true
   }
 };
