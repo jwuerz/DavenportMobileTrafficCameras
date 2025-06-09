@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Bell, Chrome, Info } from "lucide-react";
+import { Bell, Chrome, Info, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -170,9 +171,9 @@ export default function EmailSubscription() {
               </div>
 
               <div className="space-y-4">
-                <Label className="text-sm font-medium">Notification Preferences</Label>
+                <Label className="text-sm font-medium">Email Notification Preferences</Label>
                 <div className="space-y-3">
-                  {notificationOptions.map((option) => (
+                  {notificationOptions.filter(option => option.value !== 'push_notifications').map((option) => (
                     <div key={option.value} className="flex items-center space-x-2">
                       <Checkbox
                         id={option.value}
@@ -195,6 +196,41 @@ export default function EmailSubscription() {
                     </div>
                   ))}
                 </div>
+                
+                {/* Push Notifications Switch */}
+                <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Smartphone className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="push-notifications" className="text-sm font-medium">
+                          Browser Push Notifications
+                        </Label>
+                        <p className="text-xs text-gray-600">
+                          Get instant alerts even when the browser is closed
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="push-notifications"
+                      checked={form.watch("notificationPreferences").includes("push_notifications")}
+                      onCheckedChange={(checked) => {
+                        const current = form.getValues("notificationPreferences");
+                        if (checked) {
+                          form.setValue("notificationPreferences", [...current, "push_notifications"]);
+                        } else {
+                          form.setValue(
+                            "notificationPreferences",
+                            current.filter((pref) => pref !== "push_notifications")
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
                 {form.formState.errors.notificationPreferences && (
                   <p className="text-sm text-destructive">
                     {form.formState.errors.notificationPreferences.message}
