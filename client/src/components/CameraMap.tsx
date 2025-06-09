@@ -156,7 +156,7 @@ export default function CameraMap() {
 
   // Debug log for historical view
   if (selectedTab === 'historical' && validDeployments.length > 0) {
-    console.log('Historical deployments:', validDeployments.map(d => ({
+    console.log('Historical deployments:', validDeployments.map((d: CameraDeployment) => ({
       id: d.id,
       address: d.address,
       isActive: d.isActive,
