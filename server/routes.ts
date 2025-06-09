@@ -781,6 +781,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Comprehensive notification test endpoint
+  app.post("/api/test-notification", async (req, res) => {
+    try {
+      const { type, fcmToken, email } = req.body;
+
+      if (!type) {
+        return res.status(400).json({ message: "Test type is required" });
+      }
+
+      let results = [];
+
+      switch (type) {
+        case 'firebase':
+          if (!fcmToken) {
+            return res.status(400).json({ message: "FCM token is required for Firebase test" });
+          }
+          
+          const fcmResult = await fcmService.testNotification(fcmToken);
+          results.push({
+            type: 'firebase',
+            success: fcmResult.success,
+            message: fcmResult.message || fcmResult.error
+          });
+          break;
+
+        case 'firebase-all':
+          // Send test to all users with FCM tokens
+          const users = await storage.getAllActiveUsers();
+          const usersWithTokens = users.filter(user => user.fcmToken);
+          
+          if (usersWithTokens.length === 0) {
+            return res.json({
+              success: false,
+              message: "No users with Firebase tokens found",
+              sentCount: 0
+            });
+          }
+
+          const tokens = usersWithTokens.map(user => user.fcmToken);
+          const batchResults = await fcmService.sendNotificationToMultipleTokens(tokens, {
+            title: "🚦 Test Notification",
+            body: `Camera alert system test - sent to ${tokens.length} devices`,
+            data: {
+              type: "test",
+              timestamp: new Date().toISOString()
+            }
+          });
+
+          const successCount = batchResults.filter(result => result.success).length;
+          
+          return res.json({
+            success: successCount > 0,
+            message: `Test sent to ${successCount}/${tokens.length} devices`,
+            sentCount: successCount,
+            totalUsers: usersWithTokens.length,
+            results: batchResults
+          });
+
+        case 'email':
+          if (!email) {
+            return res.status(400).json({ message: "Email is required for email test" });
+          }
+          
+          const emailResult = await sendTestNotification(email);
+          results.push({
+            type: 'email',
+            success: emailResult.success,
+            message: emailResult.message || emailResult.error
+          });
+          break;
+
+        default:
+          return res.status(400).json({ message: "Invalid test type" });
+      }
+
+      const overallSuccess = results.every(result => result.success);
+      res.json({
+        success: overallSuccess,
+        results,
+        message: overallSuccess ? "All tests passed" : "Some tests failed"
+      });
+
+    } catch (error) {
+      console.error("Error in comprehensive notification test:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Test failed with error",
+        error: (error as Error).message
+      });
+    }
+  });
+
+  // Get users with Firebase tokens (for testing)
+  app.get("/api/firebase-users", async (req, res) => {
+    try {
+      const users = await storage.getAllActiveUsers();
+      const firebaseUsers = users.filter(user => user.fcmToken).map(user => ({
+        id: user.id,
+        email: user.email,
+        hasToken: !!user.fcmToken,
+        tokenPreview: user.fcmToken ? `${user.fcmToken.substring(0, 20)}...` : null,
+        notificationPreferences: user.notificationPreferences,
+        createdAt: user.createdAt
+      }));
+
+      res.json({
+        totalUsers: users.length,
+        firebaseUsers: firebaseUsers.length,
+        users: firebaseUsers
+      });
+    } catch (error) {
+      console.error("Error getting Firebase users:", error);
+      res.status(500).json({ message: "Failed to get Firebase users" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

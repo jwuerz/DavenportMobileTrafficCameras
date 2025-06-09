@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Bell, Mail, TestTube } from "lucide-react";
 import NotificationGuide from "@/components/NotificationGuide";
 import MultiStrategyNotificationTester from "@/components/MultiStrategyNotificationTester";
+import FirebaseConfigTest from "@/components/FirebaseConfigTest";
 
 export default function TestPage() {
   const [testEmail, setTestEmail] = useState("");
@@ -349,6 +350,9 @@ export default function TestPage() {
           
           {/* Multi-Strategy Notification Tester */}
           <MultiStrategyNotificationTester />
+
+          {/* Firebase Configuration Test */}
+          <FirebaseConfigTest />
 
           <div className="grid gap-6 md:grid-cols-1">
             {/* Email Tests */}

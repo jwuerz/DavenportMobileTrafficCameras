@@ -191,7 +191,8 @@ export const getFirebaseToken = async () => {
       console.log('FCM token generated successfully:', token.substring(0, 20) + '...');
       return token;
     } else {
-      throw new Error('Failed to generate FCM token after trying multiple strategies. Last error: ' + (lastError?.message || 'Unknown error'));
+      const errorMessage = lastError instanceof Error ? lastError.message : String(lastError || 'Unknown error');
+      throw new Error('Failed to generate FCM token after trying multiple strategies. Last error: ' + errorMessage);
     }
   } catch (error: unknown) {
     const errorObj = error as any;
@@ -207,7 +208,7 @@ export const getFirebaseToken = async () => {
       throw new Error('Service worker registration failed. Please check your browser settings.');
     }
     
-    const errorMessage = errorObj?.message || 'Unknown Firebase error occurred';
+    const errorMessage = (errorObj as Error)?.message || 'Unknown Firebase error occurred';
     throw new Error(`FCM token generation failed: ${errorMessage}`);
   }
 };
