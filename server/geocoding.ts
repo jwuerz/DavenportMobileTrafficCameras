@@ -47,14 +47,18 @@ export class GeocodingService {
     
     console.log(`Extracted streets: "${street1}" and "${street2}"`);
 
-    // Try various intersection query formats
+    // Try various intersection query formats with better Davenport specificity
     const queries = [
-      `${street1} and ${street2}, Davenport, Iowa, USA`,
-      `${street1} & ${street2}, Davenport, IA`,
-      `intersection of ${street1} and ${street2}, Davenport, Iowa`,
-      `${parts[0]} and ${parts[1]}, Davenport, Iowa`,
-      `${parts[0]}, Davenport, Iowa`,
-      `${parts[1]}, Davenport, Iowa`
+      `${street1} and ${street2}, Davenport, Scott County, Iowa, USA`,
+      `intersection of ${street1} and ${street2}, Davenport, Iowa, USA`,
+      `${street1} & ${street2}, Davenport, Scott County, IA`,
+      `${parts[0]} and ${parts[1]}, Davenport, Scott County, Iowa`,
+      `${street1} and ${street2}, Davenport, IA 52801`,
+      `${street1} and ${street2}, Davenport, IA 52802`,
+      `${street1} and ${street2}, Davenport, IA 52803`,
+      `${street1} and ${street2}, Davenport, IA 52804`,
+      `${parts[0]}, Davenport, Scott County, Iowa`,
+      `${parts[1]}, Davenport, Scott County, Iowa`
     ];
 
     for (const query of queries) {
@@ -85,6 +89,14 @@ export class GeocodingService {
                     .replace(/\bBlvd\b/gi, 'Boulevard');
     
     return cleaned;
+  }
+
+  private isWithinDavenport(latitude: number, longitude: number): boolean {
+    // Davenport, Iowa approximate boundaries
+    // Latitude: ~41.46 to 41.61
+    // Longitude: ~-90.68 to -90.50
+    return latitude >= 41.46 && latitude <= 41.61 && 
+           longitude >= -90.68 && longitude <= -90.50;
   }
 
   private async tryDirectGeocoding(query: string): Promise<GeocodeResult | null> {
