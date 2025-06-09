@@ -954,8 +954,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/send-missed-notifications", async (req, res) => {
     try {
-      const { notificationFixer } = await import('./notificationFixer');
-      const result = await notificationFixer.sendMissedNotifications();
+      const { sendTodaysMissedNotifications } = await import('./missedNotifications');
+      const result = await sendTodaysMissedNotifications();
       
       if (result.success) {
         res.json(result);
