@@ -293,6 +293,55 @@ export default function EmailSubscription() {
                 </AlertDescription>
               </Alert>
 
+              {/* Chrome/Browser Notifications Switch */}
+              <div className="border rounded-lg p-4 bg-orange-50/50 border-orange-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Chrome className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="chrome-notifications" className="text-sm font-medium">
+                        Browser Notifications (Chrome/Safari/Firefox)
+                      </Label>
+                      <p className="text-xs text-gray-600">
+                        Basic notifications that work when your browser is open
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="chrome-notifications"
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        enableBrowserNotifications();
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Notification Differences Info */}
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-medium mb-2">Notification Types Explained:</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start space-x-2">
+                      <Smartphone className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <strong>Push Notifications:</strong> Advanced notifications that work even when browser is closed (mobile devices, some desktops)
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <Chrome className="h-3 w-3 text-orange-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <strong>Browser Notifications:</strong> Basic notifications that appear while your browser is open and this tab is active
+                      </div>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Button
                   type="submit"
@@ -301,15 +350,6 @@ export default function EmailSubscription() {
                 >
                   <Bell className="mr-2 h-4 w-4" />
                   {isSubmitting ? "Subscribing..." : "Subscribe to Alerts"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={enableBrowserNotifications}
-                  className="flex-1"
-                >
-                  <Chrome className="mr-2 h-4 w-4" />
-                  Enable Chrome Notifications
                 </Button>
               </div>
             </form>
