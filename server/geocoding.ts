@@ -1,3 +1,5 @@
+import { getVerifiedCoordinates, isWithinDavenport } from './davenportCoordinates.js';
+
 interface GeocodeResult {
   latitude: number;
   longitude: number;
@@ -18,7 +20,18 @@ export class GeocodingService {
     try {
       console.log(`Geocoding address: ${address}`);
       
-      // Check if it's an intersection format first
+      // First, check if we have verified coordinates for this Davenport intersection
+      const verified = getVerifiedCoordinates(address);
+      if (verified) {
+        console.log(`Using verified coordinates for: ${address}`);
+        return {
+          latitude: verified.latitude,
+          longitude: verified.longitude,
+          formattedAddress: verified.address
+        };
+      }
+      
+      // Check if it's an intersection format
       if (address.includes('&')) {
         return await this.geocodeIntersection(address);
       }
@@ -91,12 +104,8 @@ export class GeocodingService {
     return cleaned;
   }
 
-  private isWithinDavenport(latitude: number, longitude: number): boolean {
-    // Davenport, Iowa approximate boundaries
-    // Latitude: ~41.46 to 41.61
-    // Longitude: ~-90.68 to -90.50
-    return latitude >= 41.46 && latitude <= 41.61 && 
-           longitude >= -90.68 && longitude <= -90.50;
+  private isWithinDavenportBounds(latitude: number, longitude: number): boolean {
+    return isWithinDavenport(latitude, longitude);
   }
 
   private async tryDirectGeocoding(query: string): Promise<GeocodeResult | null> {
@@ -128,9 +137,8 @@ export class GeocodingService {
         const lat = parseFloat(result.lat);
         const lon = parseFloat(result.lon);
 
-        // Check if result is in Davenport area
-        // Davenport bounds: roughly 41.45-41.65 lat, -90.75 to -90.40 lon
-        if (lat >= 41.45 && lat <= 41.65 && lon >= -90.75 && lon <= -90.40) {
+        // Check if result is within Davenport boundaries
+        if (this.isWithinDavenportBounds(lat, lon)) {
           // Additional check: result should mention Davenport or Iowa
           const displayName = result.display_name.toLowerCase();
           if (displayName.includes('davenport') || displayName.includes('iowa')) {
