@@ -154,16 +154,48 @@ export default function CameraMap() {
     d.latitude && d.longitude && !isNaN(parseFloat(d.latitude)) && !isNaN(parseFloat(d.longitude))
   );
 
-  // Debug log for historical view
-  if (selectedTab === 'historical' && validDeployments.length > 0) {
-    console.log('Historical deployments:', validDeployments.map((d: CameraDeployment) => ({
-      id: d.id,
-      address: d.address,
-      isActive: d.isActive,
-      startDate: d.startDate,
-      endDate: d.endDate
-    })));
-  }
+  // For historical view, group deployments by location and offset overlapping markers
+  const processedDeployments = selectedTab === 'historical' 
+    ? (() => {
+        const grouped = new Map<string, CameraDeployment[]>();
+        
+        // Group by lat/lng coordinates
+        validDeployments.forEach((d: CameraDeployment) => {
+          const key = `${d.latitude},${d.longitude}`;
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(d);
+        });
+        
+        // Apply offsets to overlapping markers
+        const result: CameraDeployment[] = [];
+        grouped.forEach(deployments => {
+          if (deployments.length === 1) {
+            result.push(deployments[0]);
+          } else {
+            // Sort: current (active) first, then historical
+            const sorted = deployments.sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0));
+            sorted.forEach((deployment, index) => {
+              if (index === 0) {
+                // Keep first marker (current) at original position
+                result.push(deployment);
+              } else {
+                // Offset subsequent markers slightly
+                const offset = 0.0003 * index; // Small offset in degrees
+                const lat = deployment.latitude ? parseFloat(deployment.latitude) : 0;
+                const lng = deployment.longitude ? parseFloat(deployment.longitude) : 0;
+                result.push({
+                  ...deployment,
+                  latitude: (lat + offset).toString(),
+                  longitude: (lng + offset).toString()
+                });
+              }
+            });
+          }
+        });
+        
+        return result;
+      })()
+    : validDeployments;
 
   const validStationaryCameras = stationary.filter((s: StationaryCamera) => 
     s.latitude && s.longitude && !isNaN(parseFloat(s.latitude)) && !isNaN(parseFloat(s.longitude))
@@ -276,9 +308,9 @@ export default function CameraMap() {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                    <MapUpdater deployments={validDeployments} />
+                    <MapUpdater deployments={processedDeployments} />
                     
-                    {validDeployments.map((deployment: CameraDeployment) => (
+                    {processedDeployments.map((deployment: CameraDeployment) => (
                       <Marker
                         key={`deployment-${deployment.id}-${deployment.startDate}`}
                         position={[parseFloat(deployment.latitude!), parseFloat(deployment.longitude!)]}
