@@ -427,33 +427,23 @@ export class DavenportScraper {
       const today = new Date().toISOString().split('T')[0];
       const currentWeek = this.getWeekOfYear(new Date());
 
-      // Get current active deployments to avoid duplicates
-      const currentDeployments = await storage.getCurrentDeployments();
-      const currentAddresses = new Set(currentDeployments.map(d => d.address.toLowerCase()));
+      console.log(`Updating deployment history for ${locations.length} locations`);
 
-      // Only end deployments that are no longer in the current locations
-      const currentLocationAddresses = new Set(locations.map(loc => loc.address.toLowerCase()));
+      // End ALL current active deployments since we're updating with fresh data
+      const currentDeployments = await storage.getCurrentDeployments();
+      console.log(`Ending ${currentDeployments.length} current deployments`);
       
-      // End deployments that are no longer active
       for (const deployment of currentDeployments) {
-        if (!currentLocationAddresses.has(deployment.address.toLowerCase())) {
-          await storage.updateCameraDeployment(deployment.id, {
-            endDate: today,
-            isActive: false
-          });
-          console.log(`Ended deployment for removed location: ${deployment.address}`);
-        }
+        await storage.updateCameraDeployment(deployment.id, {
+          endDate: today,
+          isActive: false
+        });
+        console.log(`Ended deployment: ${deployment.address}`);
       }
 
-      // Create new deployment records only for truly new locations
+      // Create fresh deployment records for all current locations
       let newDeployments = 0;
       for (const location of locations) {
-        // Skip if this location already has an active deployment
-        if (currentAddresses.has(location.address.toLowerCase())) {
-          console.log(`Skipping duplicate deployment for: ${location.address}`);
-          continue;
-        }
-
         // Get coordinates for mapping
         console.log(`Geocoding address: ${location.address}`);
         const geocodeResult = await geocodingService.geocodeAddress(location.address);
@@ -472,13 +462,13 @@ export class DavenportScraper {
           isActive: true
         };
 
-        console.log(`Creating deployment with coordinates: lat=${deployment.latitude}, lng=${deployment.longitude}`);
+        console.log(`Creating fresh deployment: ${location.address} with coordinates: lat=${deployment.latitude}, lng=${deployment.longitude}`);
 
         await storage.createCameraDeployment(deployment);
         newDeployments++;
       }
 
-      console.log(`Saved deployment history for ${newDeployments} new locations (${locations.length} total locations)`);
+      console.log(`Created ${newDeployments} fresh deployments for current locations`);
     } catch (error) {
       console.error('Error saving deployment history:', error);
     }

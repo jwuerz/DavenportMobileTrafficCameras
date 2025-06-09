@@ -1,5 +1,5 @@
 import { storage } from './storage';
-import { db } from './db';
+import { db, pool } from './db';
 import { sendCameraUpdateNotification } from './emailService';
 import { fcmService } from './fcmService';
 
