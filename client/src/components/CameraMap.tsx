@@ -35,6 +35,20 @@ interface CameraDeployment {
   isActive: boolean;
 }
 
+interface StationaryCamera {
+  id: number;
+  address: string;
+  type: string;
+  description: string;
+  schedule: string;
+  latitude: string | null;
+  longitude: string | null;
+  installDate: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Custom marker colors for different deployment statuses
 const createCustomMarker = (color: string) => {
   return new L.Icon({
@@ -52,6 +66,7 @@ const createCustomMarker = (color: string) => {
 
 const currentMarker = createCustomMarker('#ef4444'); // Red for current
 const historicalMarker = createCustomMarker('#6b7280'); // Gray for historical
+const redLightMarker = createCustomMarker('#dc2626'); // Dark red for red light cameras
 
 // Davenport, Iowa coordinates
 const DAVENPORT_CENTER: [number, number] = [41.5236, -90.5776];
