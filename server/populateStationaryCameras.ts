@@ -52,10 +52,10 @@ export async function populateStationaryCameras(): Promise<void> {
   console.log('Starting to populate stationary cameras...');
   
   try {
-    // Check if cameras already exist
+    // Check if cameras already exist - only skip if we have all 5 cameras
     const existingCameras = await storage.getAllStationaryCameras();
-    if (existingCameras.length > 0) {
-      console.log(`Found ${existingCameras.length} existing stationary cameras. Skipping population.`);
+    if (existingCameras.length >= 5) {
+      console.log(`Found ${existingCameras.length} existing stationary cameras. All cameras already populated.`);
       return;
     }
 

@@ -66,7 +66,7 @@ const createCustomMarker = (color: string) => {
 
 const currentMarker = createCustomMarker('#ef4444'); // Red for current
 const historicalMarker = createCustomMarker('#6b7280'); // Gray for historical
-const redLightMarker = createCustomMarker('#dc2626'); // Dark red for red light cameras
+const stationaryMarker = createCustomMarker('#ea580c'); // Orange for stationary cameras
 
 // Davenport, Iowa coordinates
 const DAVENPORT_CENTER: [number, number] = [41.5236, -90.5776];
@@ -166,7 +166,7 @@ export default function CameraMap() {
   };
 
   const getStationaryMarkerIcon = (camera: StationaryCamera) => {
-    return redLightMarker;
+    return stationaryMarker;
   };
 
   const getTypeColor = (type: string) => {
@@ -303,7 +303,7 @@ export default function CameraMap() {
                           <div className="space-y-2">
                             <h3 className="font-semibold">{camera.address}</h3>
                             <div className="flex gap-2">
-                              <Badge className="bg-red-600 text-white">
+                              <Badge className="bg-orange-600 text-white">
                                 {camera.type.replace('_', ' ')}
                               </Badge>
                               <Badge variant="outline">
@@ -368,7 +368,7 @@ export default function CameraMap() {
                     <span>Historical Mobile Camera Locations</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-600 rounded-full"></div>
+                    <div className="w-4 h-4 bg-orange-600 rounded-full"></div>
                     <span>Red Light Cameras (Stationary)</span>
                   </div>
                 </div>
