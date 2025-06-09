@@ -259,7 +259,7 @@ export class DavenportScraper {
           });
         }
 
-        // Update deployment history
+        // Update deployment history only when there are actual changes
         await this.saveDeploymentHistory(currentLocations);
 
         // Send notifications to all active users
@@ -400,6 +400,9 @@ export class DavenportScraper {
       console.log('Initializing camera locations...');
       const locations = await this.scrapeCurrentLocations();
       
+      // Check if we already have deployments to avoid duplicates
+      const existingDeployments = await storage.getCurrentDeployments();
+      
       // Clear existing and add initial locations
       await storage.clearAllCameraLocations();
       
@@ -415,8 +418,13 @@ export class DavenportScraper {
       
       console.log(`Initialized ${locations.length} camera locations`);
       
-      // Save deployment history with geocoding
-      await this.saveDeploymentHistory(locations);
+      // Only save deployment history if this is truly the first initialization
+      if (existingDeployments.length === 0) {
+        console.log('First time initialization - creating deployment history');
+        await this.saveDeploymentHistory(locations);
+      } else {
+        console.log('Existing deployments found - skipping deployment history creation during initialization');
+      }
     } catch (error) {
       console.error('Error initializing locations:', error);
     }
