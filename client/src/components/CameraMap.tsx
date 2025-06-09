@@ -157,8 +157,8 @@ export default function CameraMap() {
         <CardContent>
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
             <TabsList className={`grid w-full ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
-              <TabsTrigger value="current">{isMobile ? 'Current' : 'Current Locations'}</TabsTrigger>
-              <TabsTrigger value="historical">Historical</TabsTrigger>
+              <TabsTrigger value="current">{isMobile ? 'Current Mobile' : 'Current Mobile Camera Locations'}</TabsTrigger>
+              <TabsTrigger value="historical">{isMobile ? 'Historical' : 'Total Historical Camera Locations'}</TabsTrigger>
               {!isMobile && <TabsTrigger value="range">Date Range</TabsTrigger>}
             </TabsList>
             
@@ -299,11 +299,11 @@ export default function CameraMap() {
                 <div className="flex gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                    <span>Current Locations</span>
+                    <span>Current Mobile Camera Locations</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-gray-500 rounded-full"></div>
-                    <span>Historical Locations</span>
+                    <span>Total Historical Camera Locations</span>
                   </div>
                 </div>
               )}
