@@ -1,14 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getFirebaseConfig, injectFirebaseConfigIntoServiceWorker } from './firebaseConfig';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
+const firebaseConfig = getFirebaseConfig();
 
 let app: any = null;
 let messaging: any = null;
@@ -104,10 +98,13 @@ export const getFirebaseToken = async () => {
       throw new Error('VAPID key not configured. Push notifications require a VAPID key.');
     }
 
-    // Register the Firebase messaging service worker with correct scope
+    // Register the Firebase messaging service worker with config injection
     let registration = null;
     if ('serviceWorker' in navigator) {
       try {
+        // Inject Firebase config into service worker
+        const configInjected = await injectFirebaseConfigIntoServiceWorker();
+        
         // First check for existing registration
         registration = await navigator.serviceWorker.getRegistration('/');
         
@@ -118,6 +115,14 @@ export const getFirebaseToken = async () => {
           console.log('Firebase service worker registered successfully');
         } else {
           console.log('Using existing service worker registration');
+        }
+        
+        // Send config to service worker
+        if (registration.active && configInjected) {
+          registration.active.postMessage({
+            type: 'FIREBASE_CONFIG',
+            config: firebaseConfig
+          });
         }
         
         // Ensure service worker is ready

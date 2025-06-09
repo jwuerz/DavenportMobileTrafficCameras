@@ -2,17 +2,36 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Firebase configuration - replace with your actual values
-const firebaseConfig = {
-  apiKey: "AIzaSyBGF6UqNmAFNb_5Ea3jQVhpwIVyQr9IYuE",
-  authDomain: "davenport-camera-alerts.firebaseapp.com",
-  projectId: "davenport-camera-alerts",
-  storageBucket: "davenport-camera-alerts.firebasestorage.app",
-  messagingSenderId: "139796009829",
-  appId: "1:139796009829:web:4e50829265174476893100"
+// Default configuration for development mode
+let firebaseConfig = {
+  apiKey: "development-mode",
+  authDomain: "development-mode", 
+  projectId: "development-mode",
+  storageBucket: "development-mode",
+  messagingSenderId: "development-mode",
+  appId: "development-mode"
 };
 
-// Initialize Firebase
+// Listen for configuration from main thread
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'FIREBASE_CONFIG') {
+    console.log('Received Firebase config in service worker');
+    firebaseConfig = event.data.config;
+    
+    // Reinitialize Firebase with new config
+    if (firebase.apps.length > 0) {
+      firebase.app().delete().then(() => {
+        firebase.initializeApp(firebaseConfig);
+        console.log('Firebase reinitialized with production config');
+      });
+    } else {
+      firebase.initializeApp(firebaseConfig);
+      console.log('Firebase initialized with production config');
+    }
+  }
+});
+
+// Initialize Firebase with default config (will be updated if production config is received)
 firebase.initializeApp(firebaseConfig);
 
 // Initialize Firebase Messaging
