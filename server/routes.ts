@@ -819,7 +819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
 
-          const tokens = usersWithTokens.map(user => user.fcmToken);
+          const tokens = usersWithTokens.map(user => user.fcmToken).filter(token => token !== null) as string[];
           const batchResults = await fcmService.sendNotificationToMultipleTokens(tokens, {
             title: "🚦 Test Notification",
             body: `Camera alert system test - sent to ${tokens.length} devices`,

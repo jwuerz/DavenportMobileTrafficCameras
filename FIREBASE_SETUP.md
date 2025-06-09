@@ -59,20 +59,9 @@ FIREBASE_SERVER_KEY=your_server_key_here
 3. Copy the "Server key" from the "Project credentials" section
 4. Add it as `FIREBASE_SERVER_KEY` in your environment variables
 
-## Step 6: Update Service Worker Configuration
+## Step 6: Service Worker Configuration
 
-The service worker at `client/public/sw.js` needs your Firebase configuration. Replace the placeholder values:
-
-```javascript
-const firebaseConfig = {
-  apiKey: "your_api_key_here",
-  authDomain: "your_project_id.firebaseapp.com", 
-  projectId: "your_project_id",
-  storageBucket: "your_project_id.appspot.com",
-  messagingSenderId: "your_sender_id",
-  appId: "your_app_id"
-};
-```
+The Firebase service workers are automatically configured using environment variables. No manual configuration is required - the system will inject your Firebase credentials securely at runtime using the environment variables you set above.
 
 ## Step 7: Test the Integration
 

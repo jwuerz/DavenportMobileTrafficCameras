@@ -112,7 +112,7 @@ export default function TestPage() {
       }
 
       // Request permission if needed
-      let permission = currentPermission;
+      let permission: NotificationPermission = currentPermission;
       if (permission === "default") {
         console.log("Requesting notification permission...");
         permission = await Notification.requestPermission();
@@ -193,7 +193,7 @@ export default function TestPage() {
         title: "Notification Test Failed",
         description: isAndroid 
           ? "Android issue detected. Try: 1) Clear browser cache 2) Check Chrome notification settings 3) Restart browser"
-          : `Error: ${error.message || "Check browser permissions and try again."}`,
+          : `Error: ${(error as Error).message || "Check browser permissions and try again."}`,
         variant: "destructive",
       });
     }
