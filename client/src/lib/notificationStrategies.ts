@@ -105,20 +105,23 @@ export class ServiceWorkerPushStrategy implements NotificationStrategy {
     }
 
     try {
-      await this.registration.showNotification(title, {
+      const swNotificationOptions: NotificationOptions = {
         body,
         icon: options.icon || '/favicon.ico',
         badge: options.badge || '/favicon.ico',
         tag: options.tag || 'camera-update',
         requireInteraction: options.requireInteraction !== false,
         silent: options.silent || false,
-        vibrate: options.vibrate || [200, 100, 200],
         data: options.data || {},
-        actions: options.actions || [
-          { action: 'view', title: 'View Details' },
-          { action: 'dismiss', title: 'Dismiss' }
-        ]
-      });
+
+      };
+
+      // Add vibrate for Android support
+      if (options.vibrate && 'vibrate' in navigator) {
+        (swNotificationOptions as any).vibrate = options.vibrate;
+      }
+
+      await this.registration.showNotification(title, swNotificationOptions);
 
       return true;
     } catch (error) {
@@ -161,16 +164,22 @@ export class PWANotificationStrategy implements NotificationStrategy {
 
     try {
       // Enhanced PWA notification with app badge
-      const notification = new Notification(title, {
+      const pwaNotificationOptions: NotificationOptions = {
         body,
         icon: options.icon || '/favicon.ico',
         badge: options.badge || '/favicon.ico',
         tag: options.tag || 'camera-update',
         requireInteraction: true, // PWA notifications should be persistent
         silent: options.silent || false,
-        vibrate: options.vibrate || [200, 100, 200, 100, 200],
         data: { ...options.data, pwa: true }
-      });
+      };
+
+      // Add vibrate for Android PWA support
+      if (options.vibrate && 'vibrate' in navigator) {
+        (pwaNotificationOptions as any).vibrate = options.vibrate || [200, 100, 200, 100, 200];
+      }
+
+      const notification = new Notification(title, pwaNotificationOptions);
 
       // Set app badge (if supported)
       if ('setAppBadge' in navigator) {
