@@ -104,49 +104,106 @@ export const getFirebaseToken = async () => {
       throw new Error('VAPID key not configured. Push notifications require a VAPID key.');
     }
 
-    // Register the Firebase messaging service worker
+    // Register the Firebase messaging service worker with correct scope
     let registration = null;
     if ('serviceWorker' in navigator) {
       try {
-        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-          scope: '/firebase-cloud-messaging-push-scope'
-        });
-        console.log('Firebase service worker registered successfully');
+        // First check for existing registration
+        registration = await navigator.serviceWorker.getRegistration('/');
+        
+        if (!registration) {
+          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+            scope: '/'
+          });
+          console.log('Firebase service worker registered successfully');
+        } else {
+          console.log('Using existing service worker registration');
+        }
+        
+        // Ensure service worker is ready
+        await navigator.serviceWorker.ready;
       } catch (swError) {
         console.error('Firebase service worker registration failed:', swError);
-        // Try to get existing registration
-        registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+        console.log('Continuing without service worker - some browsers support FCM without it');
       }
     }
 
     console.log('Requesting FCM token with VAPID key...');
-    const tokenOptions: any = {
-      vapidKey: vapidKey
-    };
     
+    // Try multiple token generation strategies
+    let token = null;
+    let lastError = null;
+    
+    // Strategy 1: With service worker registration
     if (registration) {
-      tokenOptions.serviceWorkerRegistration = registration;
+      try {
+        console.log('Attempting FCM token generation with service worker...');
+        token = await getToken(messaging, {
+          vapidKey: vapidKey,
+          serviceWorkerRegistration: registration
+        });
+      } catch (swTokenError) {
+        console.warn('FCM token with service worker failed:', swTokenError);
+        lastError = swTokenError;
+      }
     }
-
-    const token = await getToken(messaging, tokenOptions);
+    
+    // Strategy 2: Without explicit service worker registration
+    if (!token) {
+      try {
+        console.log('Attempting FCM token generation without explicit service worker...');
+        token = await getToken(messaging, { vapidKey: vapidKey });
+      } catch (directError) {
+        console.warn('Direct FCM token generation failed:', directError);
+        lastError = directError;
+      }
+    }
+    
+    // Strategy 3: Force new service worker registration
+    if (!token && 'serviceWorker' in navigator) {
+      try {
+        console.log('Attempting to force new service worker registration...');
+        await navigator.serviceWorker.getRegistrations().then(registrations => {
+          registrations.forEach(reg => reg.unregister());
+        });
+        
+        const newRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+          scope: '/'
+        });
+        await navigator.serviceWorker.ready;
+        
+        token = await getToken(messaging, {
+          vapidKey: vapidKey,
+          serviceWorkerRegistration: newRegistration
+        });
+      } catch (forceError) {
+        console.warn('Forced service worker token generation failed:', forceError);
+        lastError = forceError;
+      }
+    }
 
     if (token) {
       console.log('FCM token generated successfully:', token.substring(0, 20) + '...');
       return token;
     } else {
-      console.log('No FCM token available - this may be due to browser settings or lack of service worker');
-      throw new Error('Failed to generate FCM token. Check browser permissions and service worker registration.');
+      throw new Error('Failed to generate FCM token after trying multiple strategies. Last error: ' + (lastError?.message || 'Unknown error'));
     }
-  } catch (error) {
-    console.error('Error getting FCM token:', error);
-    if (error.code === 'messaging/unsupported-browser') {
+  } catch (error: unknown) {
+    const errorObj = error as any;
+    console.error('Error getting FCM token:', errorObj);
+    
+    if (errorObj?.code === 'messaging/unsupported-browser') {
       throw new Error('Your browser does not support push notifications.');
-    } else if (error.code === 'messaging/permission-blocked') {
+    } else if (errorObj?.code === 'messaging/permission-blocked') {
       throw new Error('Notification permission was blocked. Please allow notifications in your browser settings.');
-    } else if (error.code === 'messaging/no-sw-in-reg') {
+    } else if (errorObj?.code === 'messaging/no-sw-in-reg') {
       throw new Error('Service worker not found. Please refresh the page and try again.');
+    } else if (errorObj?.code === 'messaging/failed-service-worker-registration') {
+      throw new Error('Service worker registration failed. Please check your browser settings.');
     }
-    throw error;
+    
+    const errorMessage = errorObj?.message || 'Unknown Firebase error occurred';
+    throw new Error(`FCM token generation failed: ${errorMessage}`);
   }
 };
 
