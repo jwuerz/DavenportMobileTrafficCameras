@@ -16,7 +16,9 @@ import { apiRequest } from "@/lib/queryClient";
 const subscriptionSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().optional(),
-  notificationPreferences: z.array(z.string()).min(1, "Please select at least one notification preference"),
+  notificationPreferences: z
+    .array(z.string())
+    .min(1, "Please select at least one notification preference"),
 });
 
 type SubscriptionFormData = z.infer<typeof subscriptionSchema>;
@@ -45,44 +47,51 @@ export default function EmailSubscription() {
     setIsSubmitting(true);
     try {
       await apiRequest("POST", "/api/subscribe", data);
-      
+
       // Try to register FCM token if user selected push notifications
-      if (data.notificationPreferences.includes('push_notifications')) {
+      if (data.notificationPreferences.includes("push_notifications")) {
         try {
-          const { notificationService } = await import("@/lib/notificationService");
-          const result = await notificationService.requestPermissionAndGetToken();
-          
+          const { notificationService } = await import(
+            "@/lib/notificationService"
+          );
+          const result =
+            await notificationService.requestPermissionAndGetToken();
+
           if (result.granted && result.token) {
             // Register FCM token with the user
             await apiRequest("POST", "/api/register-fcm", {
               email: data.email,
-              fcmToken: result.token
+              fcmToken: result.token,
             });
-            
+
             toast({
               title: "Subscription Successful!",
-              description: "You will receive email and push notifications when camera locations change.",
+              description:
+                "You will receive email and push notifications when camera locations change.",
             });
           } else {
             toast({
               title: "Subscription Created",
-              description: "Email notifications enabled. Push notifications require browser permission.",
+              description:
+                "Email notifications enabled. Push notifications require browser permission.",
             });
           }
         } catch (fcmError) {
           console.log("FCM registration optional:", fcmError);
           toast({
             title: "Subscription Created",
-            description: "Email notifications enabled. Push notification setup failed.",
+            description:
+              "Email notifications enabled. Push notification setup failed.",
           });
         }
       } else {
         toast({
           title: "Subscription Successful!",
-          description: "You will receive email notifications when camera locations change.",
+          description:
+            "You will receive email notifications when camera locations change.",
         });
       }
-      
+
       form.reset();
     } catch (error) {
       toast({
@@ -97,22 +106,25 @@ export default function EmailSubscription() {
 
   const enableBrowserNotifications = async () => {
     const { notificationService } = await import("@/lib/notificationService");
-    
+
     try {
       const result = await notificationService.requestPermissionAndGetToken();
-      
+
       if (result.granted) {
         // Test the notification
         await notificationService.testNotification();
-        
+
         toast({
           title: "Push Notifications Enabled",
-          description: "You will receive push notifications for camera updates.",
+          description:
+            "You will receive push notifications for camera updates.",
         });
       } else {
         toast({
           title: "Notifications Blocked",
-          description: result.error || "Please enable notifications in your browser settings.",
+          description:
+            result.error ||
+            "Please enable notifications in your browser settings.",
           variant: "destructive",
         });
       }
@@ -130,9 +142,12 @@ export default function EmailSubscription() {
     <section id="subscribe" className="py-16 bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold text-gray-900 mb-4">Never Miss an Update</h3>
+          <h3 className="text-3xl font-bold text-gray-900 mb-4">
+            Never Miss an Update
+          </h3>
           <p className="text-gray-600 text-lg">
-            Subscribe to get instant email notifications when camera locations change.
+            Subscribe to get instant email notifications when camera locations
+            change.
           </p>
         </div>
 
@@ -171,32 +186,46 @@ export default function EmailSubscription() {
               </div>
 
               <div className="space-y-4">
-                <Label className="text-sm font-medium">Email Notification Preferences</Label>
+                <Label className="text-sm font-medium">
+                  Email Notification Preferences
+                </Label>
                 <div className="space-y-3">
-                  {notificationOptions.filter(option => option.value !== 'push_notifications').map((option) => (
-                    <div key={option.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={option.value}
-                        checked={form.watch("notificationPreferences").includes(option.value)}
-                        onCheckedChange={(checked) => {
-                          const current = form.getValues("notificationPreferences");
-                          if (checked) {
-                            form.setValue("notificationPreferences", [...current, option.value]);
-                          } else {
-                            form.setValue(
+                  {notificationOptions
+                    .filter((option) => option.value !== "push_notifications")
+                    .map((option) => (
+                      <div
+                        key={option.value}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={option.value}
+                          checked={form
+                            .watch("notificationPreferences")
+                            .includes(option.value)}
+                          onCheckedChange={(checked) => {
+                            const current = form.getValues(
                               "notificationPreferences",
-                              current.filter((pref) => pref !== option.value)
                             );
-                          }
-                        }}
-                      />
-                      <Label htmlFor={option.value} className="text-sm">
-                        {option.label}
-                      </Label>
-                    </div>
-                  ))}
+                            if (checked) {
+                              form.setValue("notificationPreferences", [
+                                ...current,
+                                option.value,
+                              ]);
+                            } else {
+                              form.setValue(
+                                "notificationPreferences",
+                                current.filter((pref) => pref !== option.value),
+                              );
+                            }
+                          }}
+                        />
+                        <Label htmlFor={option.value} className="text-sm">
+                          {option.label}
+                        </Label>
+                      </div>
+                    ))}
                 </div>
-                
+
                 {/* Push Notifications Switch */}
                 <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200">
                   <div className="flex items-center justify-between">
@@ -205,25 +234,39 @@ export default function EmailSubscription() {
                         <Smartphone className="h-4 w-4 text-blue-600" />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="push-notifications" className="text-sm font-medium">
+                        <Label
+                          htmlFor="push-notifications"
+                          className="text-sm font-medium"
+                        >
                           Browser Push Notifications
                         </Label>
                         <p className="text-xs text-gray-600">
-                          Get instant alerts even when the browser is closed
+                          Get instant alerts even when the browser is closed on
+                          select devices. Swipe to see if your device is
+                          supported.
                         </p>
                       </div>
                     </div>
                     <Switch
                       id="push-notifications"
-                      checked={form.watch("notificationPreferences").includes("push_notifications")}
+                      checked={form
+                        .watch("notificationPreferences")
+                        .includes("push_notifications")}
                       onCheckedChange={(checked) => {
-                        const current = form.getValues("notificationPreferences");
+                        const current = form.getValues(
+                          "notificationPreferences",
+                        );
                         if (checked) {
-                          form.setValue("notificationPreferences", [...current, "push_notifications"]);
+                          form.setValue("notificationPreferences", [
+                            ...current,
+                            "push_notifications",
+                          ]);
                         } else {
                           form.setValue(
                             "notificationPreferences",
-                            current.filter((pref) => pref !== "push_notifications")
+                            current.filter(
+                              (pref) => pref !== "push_notifications",
+                            ),
                           );
                         }
                       }}
@@ -243,7 +286,9 @@ export default function EmailSubscription() {
                 <AlertDescription>
                   <p className="font-medium mb-1">Privacy Notice</p>
                   <p className="text-sm">
-                    Your email will only be used for camera location notifications. We never share your information with third parties.
+                    Your email will only be used for camera location
+                    notifications. We never share your information with third
+                    parties.
                   </p>
                 </AlertDescription>
               </Alert>
