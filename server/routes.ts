@@ -897,6 +897,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification tracking endpoints
+  app.get("/api/notification-status", async (req, res) => {
+    try {
+      const { notificationTracker } = await import('./notificationTracker');
+      const status = await notificationTracker.getNotificationStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting notification status:", error);
+      res.status(500).json({ message: "Failed to get notification status" });
+    }
+  });
+
+  app.post("/api/force-send-notifications", async (req, res) => {
+    try {
+      const { notificationTracker } = await import('./notificationTracker');
+      const result = await notificationTracker.forceSendTodaysNotifications();
+      
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(500).json(result);
+      }
+    } catch (error) {
+      console.error("Error forcing notifications:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to send notifications",
+        error: (error as Error).message
+      });
+    }
+  });
+
+  app.post("/api/check-pending-notifications", async (req, res) => {
+    try {
+      const { notificationTracker } = await import('./notificationTracker');
+      await notificationTracker.checkPendingNotifications();
+      res.json({ message: "Checked for pending notifications" });
+    } catch (error) {
+      console.error("Error checking pending notifications:", error);
+      res.status(500).json({ message: "Failed to check pending notifications" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
