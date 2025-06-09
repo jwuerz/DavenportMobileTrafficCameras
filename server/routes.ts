@@ -348,6 +348,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stationary camera routes
+  app.get("/api/stationary-cameras", async (req, res) => {
+    try {
+      const cameras = await storage.getAllStationaryCameras();
+      res.json(cameras);
+    } catch (error) {
+      console.error("Error fetching stationary cameras:", error);
+      res.status(500).json({ message: "Failed to fetch stationary cameras" });
+    }
+  });
+
+  app.get("/api/stationary-cameras/active", async (req, res) => {
+    try {
+      const cameras = await storage.getActiveStationaryCameras();
+      res.json(cameras);
+    } catch (error) {
+      console.error("Error fetching active stationary cameras:", error);
+      res.status(500).json({ message: "Failed to fetch active stationary cameras" });
+    }
+  });
+
   // Get deployments by week
   app.get("/api/deployments/week/:weekOfYear", async (req, res) => {
     try {

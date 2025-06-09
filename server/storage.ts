@@ -1,4 +1,4 @@
-import { users, cameraLocations, notifications, cameraDeployments, type User, type InsertUser, type CameraLocation, type InsertCameraLocation, type InsertNotification, type Notification, type CameraDeployment, type InsertCameraDeployment } from "@shared/schema";
+import { users, cameraLocations, notifications, cameraDeployments, stationaryCameras, type User, type InsertUser, type CameraLocation, type InsertCameraLocation, type InsertNotification, type Notification, type CameraDeployment, type InsertCameraDeployment, type StationaryCamera, type InsertStationaryCamera } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, isNull } from "drizzle-orm";
 
@@ -35,6 +35,14 @@ export interface IStorage {
   endCurrentDeployments(endDate: string): Promise<void>;
   clearHistoricalDeployments(): Promise<void>;
   deleteCameraDeployment(id: number): Promise<boolean>;
+
+  // Stationary camera operations
+  createStationaryCamera(camera: InsertStationaryCamera): Promise<StationaryCamera>;
+  updateStationaryCamera(id: number, updates: Partial<InsertStationaryCamera>): Promise<StationaryCamera | undefined>;
+  deleteStationaryCamera(id: number): Promise<boolean>;
+  getAllStationaryCameras(): Promise<StationaryCamera[]>;
+  getActiveStationaryCameras(): Promise<StationaryCamera[]>;
+  getStationaryCamera(id: number): Promise<StationaryCamera | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -210,6 +218,44 @@ export class DatabaseStorage implements IStorage {
   async deleteCameraDeployment(id: number): Promise<boolean> {
     const result = await db.delete(cameraDeployments).where(eq(cameraDeployments.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Stationary camera operations
+  async createStationaryCamera(insertCamera: InsertStationaryCamera): Promise<StationaryCamera> {
+    const [camera] = await db
+      .insert(stationaryCameras)
+      .values(insertCamera)
+      .returning();
+    return camera;
+  }
+
+  async updateStationaryCamera(id: number, updates: Partial<InsertStationaryCamera>): Promise<StationaryCamera | undefined> {
+    const [camera] = await db
+      .update(stationaryCameras)
+      .set(updates)
+      .where(eq(stationaryCameras.id, id))
+      .returning();
+    return camera || undefined;
+  }
+
+  async deleteStationaryCamera(id: number): Promise<boolean> {
+    const result = await db.delete(stationaryCameras).where(eq(stationaryCameras.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getAllStationaryCameras(): Promise<StationaryCamera[]> {
+    return await db.select().from(stationaryCameras).orderBy(stationaryCameras.address);
+  }
+
+  async getActiveStationaryCameras(): Promise<StationaryCamera[]> {
+    return await db.select().from(stationaryCameras)
+      .where(eq(stationaryCameras.status, 'active'))
+      .orderBy(stationaryCameras.address);
+  }
+
+  async getStationaryCamera(id: number): Promise<StationaryCamera | undefined> {
+    const [camera] = await db.select().from(stationaryCameras).where(eq(stationaryCameras.id, id));
+    return camera || undefined;
   }
 }
 
