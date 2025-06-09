@@ -50,7 +50,7 @@ export class NotificationTracker {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       
-      const deployments = await pool.query(`
+      const deployments = await db.execute(`
         SELECT DISTINCT 
           address, 
           type, 
