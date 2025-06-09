@@ -171,8 +171,14 @@ export default function CameraMap() {
 
   const getMarkerIcon = (deployment: CameraDeployment) => {
     if (selectedTab === 'historical') {
-      // For historical view, show current active deployments as red, inactive as gray
-      return deployment.isActive ? currentMarker : historicalMarker;
+      // On historical tab, show current week deployments as red, past deployments as gray
+      const today = new Date();
+      const deploymentDate = new Date(deployment.startDate);
+      const daysDiff = Math.floor((today.getTime() - deploymentDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // If deployment is from this week (within 7 days) and active, show as current (red)
+      // Otherwise show as historical (gray)
+      return (daysDiff <= 7 && deployment.isActive) ? currentMarker : historicalMarker;
     }
     return currentMarker;
   };
