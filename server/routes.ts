@@ -192,6 +192,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update historical deployment geocoding with Google Maps API
+  app.post("/api/update-historical-geocoding", async (req, res) => {
+    try {
+      const { updateHistoricalDeploymentGeocoding } = await import('./updateHistoricalGeocoding');
+      const result = await updateHistoricalDeploymentGeocoding();
+      res.json({ 
+        message: "Historical geocoding update completed",
+        ...result
+      });
+    } catch (error) {
+      console.error('Error updating historical geocoding:', error);
+      res.status(500).json({ 
+        error: "Failed to update historical geocoding",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Register FCM token for user
   app.post('/api/register-fcm', async (req, res) => {
     const { email, fcmToken } = req.body;

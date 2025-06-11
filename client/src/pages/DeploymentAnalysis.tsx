@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Calendar, MapPin, RefreshCw, Trash2, Users, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 interface DeploymentAnalysis {
   totalDeployments: number;
@@ -45,6 +46,8 @@ export default function DeploymentAnalysis() {
   });
 
   const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isUpdatingGeocoding, setIsUpdatingGeocoding] = useState(false);
   const { toast } = useToast();
 
   const cleanupMutation = useMutation({
@@ -82,6 +85,65 @@ export default function DeploymentAnalysis() {
       })
     }
   });
+
+  const forceRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await fetch("/api/deployments/force-refresh", {
+        method: "POST"
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "Force Refresh Completed",
+          description: result.message,
+        });
+        // Refetch data
+        queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      } else {
+        throw new Error("Failed to force refresh");
+      }
+    } catch (error) {
+      toast({
+        title: "Force Refresh Failed", 
+        description: "Failed to complete force refresh",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const updateHistoricalGeocoding = async () => {
+    setIsUpdatingGeocoding(true);
+    try {
+      const response = await fetch("/api/update-historical-geocoding", {
+        method: "POST"
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "Historical Geocoding Updated",
+          description: `Updated ${result.updated}/${result.total} historical deployments with Google Maps geocoding`,
+        });
+        // Refetch data to show updated coordinates
+        queryClient.invalidateQueries({ queryKey: ['deployments'] });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.details || "Failed to update historical geocoding");
+      }
+    } catch (error) {
+      toast({
+        title: "Geocoding Update Failed", 
+        description: error instanceof Error ? error.message : "Failed to update historical geocoding",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingGeocoding(false);
+    }
+  };
 
 
   if (isLoading) {
