@@ -115,7 +115,7 @@ export async function updateHistoricalDeploymentGeocoding(): Promise<UpdateResul
 }
 
 // Allow running this script directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   updateHistoricalDeploymentGeocoding()
     .then(result => {
       console.log('\nUpdate completed:', result);
