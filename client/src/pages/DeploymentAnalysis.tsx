@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Calendar, MapPin, RefreshCw, Trash2, Users, CheckCircle } from 'lucide-react';
+import { AlertTriangle, MapPin, RefreshCw, Trash2, Users, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 
@@ -263,6 +263,44 @@ export default function DeploymentAnalysis() {
             <p className="text-xs text-muted-foreground">Configuration issues</p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-blue-800">Force Refresh</h3>
+                <p className="text-sm text-blue-600">Manually trigger a fresh scrape of camera data</p>
+              </div>
+              <Button 
+                onClick={forceRefresh}
+                disabled={isRefreshing}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Force Refresh'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-green-800">Update Historical Geocoding</h3>
+                <p className="text-sm text-green-600">Re-geocode historical camera locations using Google Maps API for better accuracy</p>
+              </div>
+              <Button 
+                onClick={updateHistoricalGeocoding}
+                disabled={isUpdatingGeocoding}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <MapPin className={`h-4 w-4 ${isUpdatingGeocoding ? 'animate-spin' : ''}`} />
+                {isUpdatingGeocoding ? 'Updating...' : 'Update Geocoding'}
+              </Button>
+            </div>
+          </div>
       </div>
 
       {/* Duplicate Addresses */}
