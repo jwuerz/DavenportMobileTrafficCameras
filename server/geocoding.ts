@@ -1,4 +1,6 @@
+
 import { getVerifiedCoordinates, isWithinDavenport } from './davenportCoordinates.js';
+import { Client, GeocodeResponse, GeocodeResult as GoogleGeocodeResult } from "@googlemaps/google-maps-services-js";
 
 interface GeocodeResult {
   latitude: number;
@@ -6,15 +8,18 @@ interface GeocodeResult {
   formattedAddress: string;
 }
 
-interface NominatimResponse {
-  lat: string;
-  lon: string;
-  display_name: string;
-}
-
 export class GeocodingService {
-  private readonly baseUrl = 'https://nominatim.openstreetmap.org/search';
-  private readonly userAgent = 'DavenportCameraAlerts/1.0';
+  private googleMapsClient: Client;
+  private apiKey: string;
+
+  constructor() {
+    this.googleMapsClient = new Client({});
+    this.apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
+    
+    if (!this.apiKey) {
+      console.warn('GOOGLE_MAPS_API_KEY not found, geocoding will be limited to verified coordinates');
+    }
+  }
 
   async geocodeAddress(address: string): Promise<GeocodeResult | null> {
     try {
@@ -31,13 +36,19 @@ export class GeocodingService {
         };
       }
       
+      // If no API key, return null for non-verified addresses
+      if (!this.apiKey) {
+        console.log(`No Google Maps API key available for: ${address}`);
+        return null;
+      }
+      
       // Check if it's an intersection format
       if (address.includes('&')) {
         return await this.geocodeIntersection(address);
       }
       
-      // For single addresses, try normal geocoding
-      return await this.tryDirectGeocoding(address);
+      // For single addresses, try direct geocoding
+      return await this.tryGoogleGeocoding(address);
       
     } catch (error) {
       console.error(`Geocoding error for ${address}:`, error);
@@ -67,21 +78,18 @@ export class GeocodingService {
       `${street1} & ${street2}, Davenport, Scott County, IA`,
       `${parts[0]} and ${parts[1]}, Davenport, Scott County, Iowa`,
       `${street1} and ${street2}, Davenport, IA 52801`,
-      `${street1} and ${street2}, Davenport, IA 52802`,
-      `${street1} and ${street2}, Davenport, IA 52803`,
-      `${street1} and ${street2}, Davenport, IA 52804`,
       `${parts[0]}, Davenport, Scott County, Iowa`,
       `${parts[1]}, Davenport, Scott County, Iowa`
     ];
 
     for (const query of queries) {
-      const result = await this.tryDirectGeocoding(query);
+      const result = await this.tryGoogleGeocoding(query);
       if (result) {
         console.log(`Successfully geocoded with query: ${query}`);
         return result;
       }
       // Add delay between requests to respect rate limits
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     console.log(`All intersection geocoding attempts failed for: ${address}`);
@@ -94,7 +102,7 @@ export class GeocodingService {
     // "1900 Brady St." -> "Brady St"
     let cleaned = addressPart.replace(/^\d+\s+/, '').replace(/\.$/, '').trim();
     
-    // Normalize common abbreviations
+    // Normalize common abbreviations for Google Maps
     cleaned = cleaned.replace(/\bSt\b/gi, 'Street')
                     .replace(/\bAve\b/gi, 'Avenue')
                     .replace(/\bRd\b/gi, 'Road')
@@ -108,56 +116,60 @@ export class GeocodingService {
     return isWithinDavenport(latitude, longitude);
   }
 
-  private async tryDirectGeocoding(query: string): Promise<GeocodeResult | null> {
+  private async tryGoogleGeocoding(query: string): Promise<GeocodeResult | null> {
     try {
-      console.log(`Trying to geocode: ${query}`);
+      console.log(`Trying Google geocoding for: ${query}`);
       
-      const url = `${this.baseUrl}?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1&countrycodes=us`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': this.userAgent
-        }
+      const response: GeocodeResponse = await this.googleMapsClient.geocode({
+        params: {
+          address: query,
+          key: this.apiKey,
+          components: { country: 'US', administrative_area: 'IA' }, // Restrict to Iowa, US
+        },
+        timeout: 10000, // 10 seconds timeout
       });
 
-      if (!response.ok) {
-        console.error(`Geocoding API error: ${response.status}`);
-        return null;
-      }
+      if (response.data.results && response.data.results.length > 0) {
+        // Look for the best result in Davenport area
+        for (const result of response.data.results) {
+          const location = result.geometry.location;
+          const formattedAddress = result.formatted_address;
 
-      const results: NominatimResponse[] = await response.json();
-      
-      if (results.length === 0) {
-        console.log(`No results for: ${query}`);
-        return null;
-      }
-
-      // Look for the best result in Davenport area
-      for (const result of results) {
-        const lat = parseFloat(result.lat);
-        const lon = parseFloat(result.lon);
-
-        // Check if result is within Davenport boundaries
-        if (this.isWithinDavenportBounds(lat, lon)) {
-          // Additional check: result should mention Davenport or Iowa
-          const displayName = result.display_name.toLowerCase();
-          if (displayName.includes('davenport') || displayName.includes('iowa')) {
-            console.log(`Found valid Davenport location: ${lat}, ${lon}`);
-            console.log(`Address: ${result.display_name}`);
+          // Check if result is within Davenport boundaries
+          if (this.isWithinDavenportBounds(location.lat, location.lng)) {
+            console.log(`Found valid Davenport location: ${location.lat}, ${location.lng}`);
+            console.log(`Address: ${formattedAddress}`);
             return {
-              latitude: lat,
-              longitude: lon,
-              formattedAddress: result.display_name
+              latitude: location.lat,
+              longitude: location.lng,
+              formattedAddress: formattedAddress
             };
           }
+        }
+
+        // If no results in Davenport bounds, take the first result if it mentions Davenport
+        const firstResult = response.data.results[0];
+        if (firstResult.formatted_address.toLowerCase().includes('davenport')) {
+          console.log(`Using first result mentioning Davenport: ${firstResult.geometry.location.lat}, ${firstResult.geometry.location.lng}`);
+          return {
+            latitude: firstResult.geometry.location.lat,
+            longitude: firstResult.geometry.location.lng,
+            formattedAddress: firstResult.formatted_address
+          };
         }
       }
 
       console.log(`No valid Davenport results found for: ${query}`);
       return null;
 
-    } catch (error) {
-      console.error(`Direct geocoding error for ${query}:`, error);
+    } catch (error: any) {
+      console.error(`Google geocoding error for ${query}:`, error);
+      
+      // Handle specific Google Maps API errors
+      if (error.response?.data?.error_message) {
+        console.error(`Google API Error: ${error.response.data.error_message}`);
+      }
+      
       return null;
     }
   }
@@ -166,8 +178,8 @@ export class GeocodingService {
     const results = new Map<string, GeocodeResult>();
     
     for (const address of addresses) {
-      // Add delay to respect rate limits
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add delay to respect Google Maps API rate limits
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       const result = await this.geocodeAddress(address);
       if (result) {
