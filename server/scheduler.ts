@@ -12,8 +12,8 @@ export class NotificationScheduler {
     // Initialize camera locations on startup
     await scraper.initializeLocations();
 
-    // Schedule checks every hour
-    cron.schedule('0 * * * *', async () => {
+    // Schedule checks every 4 hours to reduce frequency
+    cron.schedule('0 */4 * * *', async () => {
       console.log('Running scheduled camera location check...');
       try {
         await scraper.checkForUpdates();
@@ -22,13 +22,13 @@ export class NotificationScheduler {
       }
     });
 
-    // Schedule additional checks every 30 minutes during peak hours (7 AM - 7 PM)
-    cron.schedule('*/30 7-19 * * *', async () => {
-      console.log('Running peak hours camera location check...');
+    // Schedule one check per day during business hours (9 AM) for consistency
+    cron.schedule('0 9 * * *', async () => {
+      console.log('Running daily business hours check...');
       try {
         await scraper.checkForUpdates();
       } catch (error) {
-        console.error('Peak hours check failed:', error);
+        console.error('Daily check failed:', error);
       }
     });
 

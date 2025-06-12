@@ -15,6 +15,7 @@ interface ScrapedLocation {
 export class DavenportScraper {
   private readonly url = 'https://www.davenportiowa.com/government/departments/police/automated_traffic_enforcement';
   private lastScrapedContent: string = '';
+  private lastNotificationTime: Date | null = null;
 
   async scrapeCurrentLocations(): Promise<ScrapedLocation[]> {
     try {
@@ -85,6 +86,62 @@ export class DavenportScraper {
   private isDailyScheduleItem(text: string): boolean {
     const dayPattern = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):/i;
     return dayPattern.test(text.trim());
+  }
+
+  private shouldSendNotifications(): boolean {
+    // Don't send notifications more than once every 4 hours
+    const NOTIFICATION_COOLDOWN_HOURS = 4;
+    
+    if (!this.lastNotificationTime) {
+      return true; // First notification, always send
+    }
+    
+    const now = new Date();
+    const timeSinceLastNotification = now.getTime() - this.lastNotificationTime.getTime();
+    const hoursSinceLastNotification = timeSinceLastNotification / (1000 * 60 * 60);
+    
+    if (hoursSinceLastNotification >= NOTIFICATION_COOLDOWN_HOURS) {
+      console.log(`${hoursSinceLastNotification.toFixed(1)} hours since last notification - sending notifications`);
+      return true;
+    } else {
+      console.log(`Only ${hoursSinceLastNotification.toFixed(1)} hours since last notification - skipping (cooldown: ${NOTIFICATION_COOLDOWN_HOURS}h)`);
+      return false;
+    }
+  }
+
+  private async initializeLastNotificationTime(): Promise<void> {
+    try {
+      // Get the most recent notification time from the database
+      const users = await storage.getAllActiveUsers();
+      if (users.length === 0) return;
+      
+      // Check the most recent camera location notification across all users
+      let latestNotificationTime: Date | null = null;
+      
+      for (const user of users) {
+        const notifications = await storage.getNotificationsByUser(user.id);
+        const cameraNotifications = notifications.filter(n => 
+          n.subject.includes('Camera Location') && n.status === 'sent'
+        );
+        
+        if (cameraNotifications.length > 0) {
+          const userLatest = cameraNotifications[0].sentAt; // Assuming sorted by most recent
+          if (userLatest && (!latestNotificationTime || userLatest > latestNotificationTime)) {
+            latestNotificationTime = userLatest;
+          }
+        }
+      }
+      
+      this.lastNotificationTime = latestNotificationTime;
+      if (latestNotificationTime) {
+        console.log(`Initialized last notification time: ${latestNotificationTime.toISOString()}`);
+      } else {
+        console.log('No previous notifications found in database');
+      }
+    } catch (error) {
+      console.error('Error initializing last notification time:', error);
+      this.lastNotificationTime = null;
+    }
   }
 
   private splitLocationString(locationString: string): string[] {
@@ -284,8 +341,14 @@ export class DavenportScraper {
         // Update deployment history only when there are actual changes
         await this.saveDeploymentHistory(currentLocations);
 
-        // Send notifications to all active users
-        await this.notifyUsers(currentLocations);
+        // Check if we should send notifications (throttle to prevent spam)
+        const shouldNotify = this.shouldSendNotifications();
+        if (shouldNotify) {
+          await this.notifyUsers(currentLocations);
+          this.lastNotificationTime = new Date();
+        } else {
+          console.log('Skipping notifications due to recent notification cooldown');
+        }
         
         return true;
       }
@@ -420,6 +483,10 @@ export class DavenportScraper {
   async initializeLocations(): Promise<void> {
     try {
       console.log('Initializing camera locations...');
+      
+      // Initialize last notification time from database
+      await this.initializeLastNotificationTime();
+      
       const locations = await this.scrapeCurrentLocations();
       
       // Check if we already have deployments to avoid duplicates
