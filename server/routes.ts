@@ -283,6 +283,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Historical data recovery endpoint
+  app.post('/api/restore-historical-data', async (req, res) => {
+    try {
+      const { historicalRecords } = req.body;
+      
+      if (!Array.isArray(historicalRecords) || historicalRecords.length === 0) {
+        return res.status(400).json({ 
+          error: 'historicalRecords array is required and must not be empty' 
+        });
+      }
+
+      // Validate each record has required fields
+      const requiredFields = ['address', 'startDate', 'type'];
+      for (const record of historicalRecords) {
+        for (const field of requiredFields) {
+          if (!record[field]) {
+            return res.status(400).json({ 
+              error: `Missing required field: ${field}` 
+            });
+          }
+        }
+      }
+
+      // Helper function to split addresses
+      function splitLocationString(locationString: string): string[] {
+        const delimiters = /\s*[–\-&]\s*|\s+and\s+/gi;
+        const parts = locationString.split(delimiters)
+          .map((part: string) => part.trim())
+          .filter((part: string) => part.length > 5);
+        return parts.length <= 1 ? [locationString.trim()] : parts;
+      }
+
+      // Helper function to get week of year
+      function getWeekOfYear(date: Date): string {
+        const year = date.getFullYear();
+        const start = new Date(year, 0, 1);
+        const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+        const week = Math.ceil((days + start.getDay() + 1) / 7);
+        return `${year}-W${week.toString().padStart(2, '0')}`;
+      }
+
+      // Import the historical data with address splitting
+      let imported = 0;
+      let combinedRecordsProcessed = 0;
+
+      for (const record of historicalRecords) {
+        // Split addresses if they contain delimiters
+        const addresses = splitLocationString(record.address);
+        
+        if (addresses.length > 1) {
+          combinedRecordsProcessed++;
+        }
+        
+        for (const address of addresses) {
+          const weekOfYear = getWeekOfYear(new Date(record.startDate));
+          
+          await storage.createCameraDeployment({
+            address: address.trim(),
+            type: record.type,
+            description: record.description || 'Restored historical deployment',
+            schedule: record.schedule || `Historical - Week ${weekOfYear}`,
+            startDate: record.startDate,
+            endDate: record.endDate || record.startDate,
+            weekOfYear,
+            isActive: false,
+            latitude: null,
+            longitude: null
+          });
+          
+          imported++;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Successfully restored ${imported} historical deployment records from ${historicalRecords.length} original records`,
+        imported,
+        combinedRecordsProcessed,
+        originalRecords: historicalRecords.length
+      });
+
+    } catch (error) {
+      console.error('Error restoring historical data:', error);
+      res.status(500).json({ 
+        error: 'Failed to restore historical data',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get summary of data loss for recovery planning
+  app.get('/api/data-loss-summary', async (req, res) => {
+    try {
+      const allDeployments = await storage.getAllCameraDeployments();
+      const earliestDate = allDeployments.length > 0 ? 
+        Math.min(...allDeployments.map(d => new Date(d.startDate).getTime())) : null;
+      
+      res.json({
+        totalDeployments: allDeployments.length,
+        activeDeployments: allDeployments.filter(d => d.isActive).length,
+        historicalDeployments: allDeployments.filter(d => !d.isActive).length,
+        earliestDate: earliestDate ? new Date(earliestDate).toISOString() : null,
+        dataLossIssue: {
+          description: "Historical data from before June 12, 2025 was lost during address splitting implementation",
+          recoveryOptions: [
+            "Use /api/restore-historical-data endpoint to import legitimate historical data from external sources",
+            "Provide CSV or JSON data with fields: address, startDate, endDate, type, description, schedule"
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Error getting data loss summary:', error);
+      res.status(500).json({ error: 'Failed to get data summary' });
+    }
+  });
+
   // Test welcome email endpoint
   app.post('/api/test-welcome-email', async (req, res) => {
     const { email } = req.body;
