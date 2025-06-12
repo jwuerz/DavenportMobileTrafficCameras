@@ -374,10 +374,11 @@ export default function CameraMap() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-2xl font-bold">
-                      {validDeployments.length + (selectedTab === 'historical' ? validStationaryCameras.length : 0)}
+                      {selectedTab === 'current' ? deployments.length : 
+                       deployments.length + (selectedTab === 'historical' ? validStationaryCameras.length : 0)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {selectedTab === 'current' ? 'Active Locations' : 'Total Camera Locations'}
+                      {selectedTab === 'current' ? 'Current Mobile Camera Locations' : 'Total Historical Camera Locations'}
                     </p>
                   </CardContent>
                 </Card>
@@ -385,7 +386,7 @@ export default function CameraMap() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-2xl font-bold">
-                      {validDeployments.filter((d: CameraDeployment) => d.type === 'mobile').length}
+                      {deployments.filter((d: CameraDeployment) => d.type === 'mobile').length}
                     </div>
                     <p className="text-xs text-muted-foreground">Mobile Cameras</p>
                   </CardContent>
@@ -394,10 +395,10 @@ export default function CameraMap() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-2xl font-bold">
-                      {selectedTab === 'historical' ? validStationaryCameras.length : deployments.filter((d: CameraDeployment) => !d.latitude || !d.longitude).length}
+                      {selectedTab === 'historical' ? validStationaryCameras.length : validDeployments.length}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {selectedTab === 'historical' ? 'Red Light Cameras' : 'Locations Without Coordinates'}
+                      {selectedTab === 'historical' ? 'Red Light Cameras (Stationary)' : 'With Map Coordinates'}
                     </p>
                   </CardContent>
                 </Card>
