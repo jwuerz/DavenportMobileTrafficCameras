@@ -82,9 +82,22 @@ export default function CameraHistory() {
   const recentDeployments = allDeployments
     .filter(d => d.isActive) // Show all current active deployments
     .sort((a, b) => {
-      // Sort by start date descending, then by ID descending for same dates
+      // Sort by start date descending first
       const dateCompare = new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-      return dateCompare !== 0 ? dateCompare : b.id - a.id;
+      if (dateCompare !== 0) return dateCompare;
+      
+      // For same dates, sort by day of week (Monday=1 to Friday=5)
+      const getDayOrder = (deployment: any) => {
+        const schedule = deployment.schedule?.toLowerCase() || '';
+        if (schedule.includes('monday')) return 1;
+        if (schedule.includes('tuesday')) return 2;
+        if (schedule.includes('wednesday')) return 3;
+        if (schedule.includes('thursday')) return 4;
+        if (schedule.includes('friday')) return 5;
+        return 6; // Unknown days go last
+      };
+      
+      return getDayOrder(a) - getDayOrder(b);
     });
 
   return (
