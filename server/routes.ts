@@ -10,6 +10,15 @@ import { z } from "zod";
 // Initialize the scheduler
 scheduler.initialize();
 
+// Helper function to get week of year
+function getWeekOfYear(date: Date): string {
+  const year = date.getFullYear();
+  const start = new Date(year, 0, 1);
+  const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+  const week = Math.ceil((days + start.getDay() + 1) / 7);
+  return `${year}-W${week.toString().padStart(2, '0')}`;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all active camera locations
@@ -795,6 +804,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error during force refresh:", error);
       res.status(500).json({ message: "Failed to complete force refresh" });
+    }
+  });
+
+  // Sync deployments with current camera locations
+  app.post("/api/sync-deployments", async (req, res) => {
+    try {
+      console.log('Starting deployment sync with current camera locations...');
+
+      const currentLocations = await storage.getActiveCameraLocations();
+      const currentDeployments = await storage.getCurrentDeployments();
+
+      console.log(`Found ${currentLocations.length} current locations and ${currentDeployments.length} current deployments`);
+
+      if (currentLocations.length === 0) {
+        return res.status(400).json({ message: "No current camera locations found to sync" });
+      }
+
+      // Create a map of existing deployment addresses (normalized)
+      const existingDeploymentAddresses = new Set(
+        currentDeployments.map(d => d.address.toLowerCase().trim())
+      );
+
+      // Find locations that don't have corresponding deployments
+      const locationsNeedingDeployments = currentLocations.filter(location => 
+        !existingDeploymentAddresses.has(location.address.toLowerCase().trim())
+      );
+
+      console.log(`Found ${locationsNeedingDeployments.length} locations that need deployment records`);
+
+      if (locationsNeedingDeployments.length === 0) {
+        return res.json({
+          message: "All locations already have deployment records",
+          locations: currentLocations.length,
+          deployments: currentDeployments.length,
+          created: 0
+        });
+      }
+
+      // Create deployment records for missing locations
+      const today = new Date().toISOString().split('T')[0];
+      const currentWeek = getWeekOfYear(new Date());
+      let createdCount = 0;
+
+      const { geocodingService } = await import('./geocoding');
+
+      for (const location of locationsNeedingDeployments) {
+        console.log(`Creating deployment for: ${location.address}`);
+        
+        // Get coordinates for the address
+        const geocodeResult = await geocodingService.geocodeAddress(location.address);
+        
+        const deployment = {
+          address: location.address,
+          type: location.type,
+          description: location.description,
+          schedule: location.schedule,
+          latitude: geocodeResult?.latitude?.toString() || null,
+          longitude: geocodeResult?.longitude?.toString() || null,
+          startDate: today,
+          endDate: null,
+          weekOfYear: currentWeek,
+          isActive: true
+        };
+
+        await storage.createCameraDeployment(deployment);
+        createdCount++;
+        
+        console.log(`Created deployment for ${location.address} with coordinates: lat=${deployment.latitude}, lng=${deployment.longitude}`);
+      }
+
+      // Get final counts
+      const finalLocations = await storage.getActiveCameraLocations();
+      const finalDeployments = await storage.getCurrentDeployments();
+
+      console.log(`Sync completed. Created ${createdCount} new deployments. Final: ${finalLocations.length} locations, ${finalDeployments.length} deployments`);
+
+      res.json({
+        message: `Successfully synced deployments. Created ${createdCount} new deployment records.`,
+        locations: finalLocations.length,
+        deployments: finalDeployments.length,
+        created: createdCount
+      });
+
+    } catch (error) {
+      console.error("Error syncing deployments:", error);
+      res.status(500).json({ message: "Failed to sync deployments" });
     }
   });
 
