@@ -822,14 +822,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create a map of existing deployment addresses (normalized)
+      const normalizeAddress = (address: string) => {
+        return address.toLowerCase()
+          .trim()
+          .replace(/\s+/g, ' ')  // Normalize multiple spaces to single space
+          .replace(/[.,]/g, '')   // Remove periods and commas
+          .replace(/\s+(st|street|ave|avenue|rd|road|dr|drive)\b/gi, ' $1'); // Normalize street abbreviations
+      };
+
       const existingDeploymentAddresses = new Set(
-        currentDeployments.map(d => d.address.toLowerCase().trim())
+        currentDeployments.map(d => normalizeAddress(d.address))
       );
 
+      console.log('Existing deployment addresses (normalized):', Array.from(existingDeploymentAddresses));
+
       // Find locations that don't have corresponding deployments
-      const locationsNeedingDeployments = currentLocations.filter(location => 
-        !existingDeploymentAddresses.has(location.address.toLowerCase().trim())
-      );
+      const locationsNeedingDeployments = currentLocations.filter(location => {
+        const normalizedLocation = normalizeAddress(location.address);
+        const hasDeployment = existingDeploymentAddresses.has(normalizedLocation);
+        console.log(`Location: "${location.address}" -> "${normalizedLocation}" -> Has deployment: ${hasDeployment}`);
+        return !hasDeployment;
+      });
 
       console.log(`Found ${locationsNeedingDeployments.length} locations that need deployment records`);
 
