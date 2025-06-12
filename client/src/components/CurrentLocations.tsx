@@ -54,7 +54,7 @@ export default function CurrentLocations() {
       
       toast({
         title: "Locations Updated",
-        description: response.hasChanges ? "Camera locations have been refreshed successfully." : "No changes detected.",
+        description: (response as any)?.hasChanges ? "Camera locations have been refreshed successfully." : "No changes detected.",
       });
     } catch (error) {
       setIsRefreshing(false);

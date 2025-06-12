@@ -19,10 +19,19 @@ interface CameraDeployment {
 }
 
 interface DeploymentStats {
+  totalHistoricalLocations: number;
   totalDeployments: number;
   uniqueLocations: number;
   averageDeploymentDuration: number;
   mostFrequentLocation: string;
+}
+
+interface StationaryCamera {
+  id: number;
+  address: string;
+  type: string;
+  description: string;
+  status: string;
 }
 
 export default function CameraHistory() {
@@ -30,7 +39,14 @@ export default function CameraHistory() {
     queryKey: ['/api/deployments']
   });
 
+  const { data: stationaryCameras = [] } = useQuery<StationaryCamera[]>({
+    queryKey: ['/api/stationary-cameras']
+  });
+
+  const activeStationaryCameras = stationaryCameras.filter(cam => cam.status === 'active');
+  
   const stats: DeploymentStats = {
+    totalHistoricalLocations: allDeployments.length + activeStationaryCameras.length,
     totalDeployments: allDeployments.length,
     uniqueLocations: new Set(allDeployments.map(d => d.address)).size,
     averageDeploymentDuration: calculateAverageDuration(allDeployments),
@@ -80,13 +96,13 @@ export default function CameraHistory() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Mobile Camera Deployments</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Historical Camera Locations</CardTitle>
             <Camera className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalDeployments}</div>
+            <div className="text-2xl font-bold">{stats.totalHistoricalLocations}</div>
             <p className="text-xs text-muted-foreground">
-              All recorded camera deployments
+              All deployments + stationary cameras ({stats.totalDeployments} + {activeStationaryCameras.length})
             </p>
           </CardContent>
         </Card>
