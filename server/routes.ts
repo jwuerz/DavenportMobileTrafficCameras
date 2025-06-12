@@ -40,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Create new user
         const newUser = await storage.createUser(userData);
-        
+
         // Send welcome email to new user
         try {
           const emailResult = await sendWelcomeEmail(userData.email);
@@ -52,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("Error sending welcome email:", error);
           // Don't fail the signup if email fails, just log it
         }
-        
+
         res.json({ message: "Subscription created successfully", user: newUser });
       }
     } catch (error) {
@@ -170,10 +170,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentMobileLocations = await storage.getActiveCameraLocations();
       const allDeployments = await storage.getAllCameraDeployments();
       const stationaryCameras = await storage.getActiveStationaryCameras();
-      
+
       // Current Mobile Camera Locations = Active mobile cameras for this week
       const currentMobileCount = currentMobileLocations.filter(loc => loc.type === 'mobile').length;
-      
+
       // Total Historical Camera Locations = All deployments + stationary cameras
       const totalHistoricalCount = allDeployments.length + stationaryCameras.length;
 
@@ -280,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const users = await storage.getAllActiveUsers();
       const usersWithTokens = users.filter(user => user.fcmToken).length;
-      
+
       res.json({
         configured: fcmService.isConfigured(),
         totalUsers: users.length,
@@ -297,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/restore-historical-data', async (req, res) => {
     try {
       const { historicalRecords } = req.body;
-      
+
       if (!Array.isArray(historicalRecords) || historicalRecords.length === 0) {
         return res.status(400).json({ 
           error: 'historicalRecords array is required and must not be empty' 
@@ -340,14 +340,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const record of historicalRecords) {
         // Split addresses if they contain delimiters
         const addresses = splitLocationString(record.address);
-        
+
         if (addresses.length > 1) {
           combinedRecordsProcessed++;
         }
-        
+
         for (const address of addresses) {
           const weekOfYear = getWeekOfYear(new Date(record.startDate));
-          
+
           await storage.createCameraDeployment({
             address: address.trim(),
             type: record.type,
@@ -360,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             latitude: null,
             longitude: null
           });
-          
+
           imported++;
         }
       }
@@ -388,7 +388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allDeployments = await storage.getAllCameraDeployments();
       const earliestDate = allDeployments.length > 0 ? 
         Math.min(...allDeployments.map(d => new Date(d.startDate).getTime())) : null;
-      
+
       res.json({
         totalDeployments: allDeployments.length,
         activeDeployments: allDeployments.filter(d => d.isActive).length,
@@ -466,15 +466,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allDeployments = await storage.getAllCameraDeployments();
       const currentDeployments = await storage.getCurrentDeployments();
-      
+
       // Mark deployments as active if they're in the current deployments list
       const currentDeploymentIds = new Set(currentDeployments.map(d => d.id));
-      
+
       const deploymentsWithCorrectStatus = allDeployments.map(deployment => ({
         ...deployment,
         isActive: currentDeploymentIds.has(deployment.id)
       }));
-      
+
       res.json(deploymentsWithCorrectStatus);
     } catch (error) {
       console.error("Error fetching historical deployments:", error);
@@ -550,6 +550,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allDeployments = await storage.getAllCameraDeployments();
       const currentDeployments = await storage.getCurrentDeployments();
+      const currentLocations = await storage.getActiveCameraLocations();
+      const stationaryCameras = await storage.getActiveStationaryCameras();
+
+      console.log(`Analysis: ${allDeployments.length} mobile deployments, ${stationaryCameras.length} stationary cameras, ${currentDeployments.length} current deployments, ${currentLocations.length} current locations`);
 
       // Group by address to find duplicates
       const groupedByAddress = allDeployments.reduce((acc, deployment) => {
@@ -594,7 +598,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const analysis = {
         totalDeployments: allDeployments.length,
+        totalHistoricalLocations: allDeployments.length + stationaryCameras.length,
         currentActiveDeployments: currentDeployments.length,
+        currentLocations: currentLocations.length,
+        stationaryCameras: stationaryCameras.length,
         uniqueAddresses: Object.keys(groupedByAddress).length,
         duplicateAddresses,
         missingCoordinates: missingCoordinates.map(d => ({
@@ -760,7 +767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // SAFETY: Only clear current active locations, preserve historical deployments
       await storage.clearAllCameraLocations();
-      
+
       // End current active deployments but keep historical records intact
       const currentDeployments = await storage.getCurrentDeployments();
       if (currentDeployments.length > 0) {
@@ -843,7 +850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send test notification
       const result = await fcmService.testNotification(user.fcmToken);
-      
+
       if (result.success) {
         res.json({ message: "Test FCM notification sent successfully" });
       } else {
@@ -897,7 +904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: notification.body,
         data: data || {}
       });
-      
+
       if (result.success) {
         res.json({ message: "Test push notification sent successfully" });
       } else {
@@ -924,7 +931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send camera update test notification
       const result = await fcmService.sendCameraUpdateNotification([fcmToken], 5);
-      
+
       if (result.length > 0 && result[0].success) {
         res.json({ message: "Camera update notification sent successfully" });
       } else {
@@ -956,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!fcmToken) {
             return res.status(400).json({ message: "FCM token is required for Firebase test" });
           }
-          
+
           const fcmResult = await fcmService.testNotification(fcmToken);
           results.push({
             type: 'firebase',
@@ -969,7 +976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Send test to all users with FCM tokens
           const users = await storage.getAllActiveUsers();
           const usersWithTokens = users.filter(user => user.fcmToken);
-          
+
           if (usersWithTokens.length === 0) {
             return res.json({
               success: false,
@@ -989,7 +996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           const successCount = batchResults.filter(result => result.success).length;
-          
+
           return res.json({
             success: successCount > 0,
             message: `Test sent to ${successCount}/${tokens.length} devices`,
@@ -1002,7 +1009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!email) {
             return res.status(400).json({ message: "Email is required for email test" });
           }
-          
+
           const emailResult = await sendTestNotification(email);
           results.push({
             type: 'email',
@@ -1072,7 +1079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { notificationTracker } = await import('./notificationTracker');
       const result = await notificationTracker.forceSendTodaysNotifications();
-      
+
       if (result.success) {
         res.json(result);
       } else {
@@ -1115,7 +1122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { sendTodaysMissedNotifications } = await import('./missedNotifications');
       const result = await sendTodaysMissedNotifications();
-      
+
       if (result.success) {
         res.json(result);
       } else {

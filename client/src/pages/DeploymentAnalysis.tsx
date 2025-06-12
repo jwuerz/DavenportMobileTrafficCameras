@@ -8,7 +8,10 @@ import { useState } from 'react';
 
 interface DeploymentAnalysis {
   totalDeployments: number;
+  totalHistoricalLocations?: number;
   currentActiveDeployments: number;
+  currentLocations?: number;
+  stationaryCameras?: number;
   uniqueAddresses: number;
   duplicateAddresses: Array<{
     address: string;
@@ -218,12 +221,16 @@ export default function DeploymentAnalysis() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Deployments</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Historical Locations</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analysis.totalDeployments}</div>
-            <p className="text-xs text-muted-foreground">All recorded deployments</p>
+            <div className="text-2xl font-bold">
+              {analysis.totalHistoricalLocations || analysis.totalDeployments}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {analysis.totalDeployments} mobile + {analysis.stationaryCameras || 0} stationary
+            </p>
           </CardContent>
         </Card>
 
