@@ -507,13 +507,9 @@ export class DavenportScraper {
       
       console.log(`Initialized ${locations.length} camera locations`);
       
-      // Only save deployment history if this is truly the first initialization
-      if (existingDeployments.length === 0) {
-        console.log('First time initialization - creating deployment history');
-        await this.saveDeploymentHistory(locations);
-      } else {
-        console.log('Existing deployments found - skipping deployment history creation during initialization');
-      }
+      // Always save deployment history to ensure it matches current split addresses
+      console.log('Creating deployment history with current location data');
+      await this.saveDeploymentHistory(locations);
     } catch (error) {
       console.error('Error initializing locations:', error);
     }
