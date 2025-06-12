@@ -71,12 +71,18 @@ const stationaryMarker = createCustomMarker('#eab308'); // Yellow for stationary
 // Davenport, Iowa coordinates
 const DAVENPORT_CENTER: [number, number] = [41.5236, -90.5776];
 
-function MapUpdater({ deployments }: { deployments: CameraDeployment[] }) {
+function MapUpdater({ deployments, currentDeployments }: { 
+  deployments: CameraDeployment[], 
+  currentDeployments: CameraDeployment[] 
+}) {
   const map = useMap();
   
   useEffect(() => {
-    if (deployments.length > 0) {
-      const validDeployments = deployments.filter(d => d.latitude && d.longitude);
+    // Use deployments if provided, otherwise fall back to current deployments
+    const dataToUse = deployments.length > 0 ? deployments : currentDeployments;
+    
+    if (dataToUse.length > 0) {
+      const validDeployments = dataToUse.filter(d => d.latitude && d.longitude);
       if (validDeployments.length > 0) {
         const bounds = validDeployments.map(d => [
           parseFloat(d.latitude!), 
@@ -85,7 +91,7 @@ function MapUpdater({ deployments }: { deployments: CameraDeployment[] }) {
         map.fitBounds(bounds, { padding: [20, 20] });
       }
     }
-  }, [deployments, map]);
+  }, [deployments, currentDeployments, map]);
 
   return null;
 }
@@ -101,11 +107,10 @@ export default function CameraMap() {
     to: undefined
   });
 
-  // Fetch current deployments
+  // Fetch current deployments (always fetch to show on map by default)
   const { data: currentDeployments = [], isLoading: currentLoading } = useQuery({
     queryKey: ['deployments', 'current'],
-    queryFn: () => fetch('/api/deployments/current').then(res => res.json()),
-    enabled: selectedTab === 'current'
+    queryFn: () => fetch('/api/deployments/current').then(res => res.json())
   });
 
   // Fetch historical deployments
@@ -144,7 +149,7 @@ export default function CameraMap() {
       case 'range':
         return { deployments: rangeDeployments, loading: rangeLoading, stationary: [] };
       default:
-        return { deployments: [], loading: false, stationary: [] };
+        return { deployments: currentDeployments, loading: currentLoading, stationary: [] };
     }
   };
 
@@ -308,7 +313,7 @@ export default function CameraMap() {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                    <MapUpdater deployments={processedDeployments} />
+                    <MapUpdater deployments={processedDeployments} currentDeployments={currentDeployments} />
                     
                     {processedDeployments.map((deployment: CameraDeployment) => (
                       <Marker
@@ -374,7 +379,7 @@ export default function CameraMap() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-2xl font-bold">
-                      {selectedTab === 'current' ? deployments.length : 
+                      {selectedTab === 'current' ? currentDeployments.length : 
                        deployments.length + (selectedTab === 'historical' ? validStationaryCameras.length : 0)}
                     </div>
                     <p className="text-xs text-muted-foreground">
