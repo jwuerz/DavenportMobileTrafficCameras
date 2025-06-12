@@ -507,9 +507,23 @@ export class DavenportScraper {
       
       console.log(`Initialized ${locations.length} camera locations`);
       
-      // Always save deployment history to ensure it matches current split addresses
-      console.log('Creating deployment history with current location data');
-      await this.saveDeploymentHistory(locations);
+      // Only create deployment history if no current deployments exist (first run)
+      // or if the locations have actually changed
+      if (existingDeployments.length === 0) {
+        console.log('No existing deployments found - creating initial deployment history');
+        await this.saveDeploymentHistory(locations);
+      } else {
+        // Compare with existing locations to see if we need to update
+        const storedLocations = await storage.getActiveCameraLocations();
+        const hasChanged = this.compareLocations(locations, storedLocations);
+        
+        if (hasChanged) {
+          console.log('Locations have changed - updating deployment history');
+          await this.saveDeploymentHistory(locations);
+        } else {
+          console.log('No changes detected - preserving existing deployment history');
+        }
+      }
     } catch (error) {
       console.error('Error initializing locations:', error);
     }
