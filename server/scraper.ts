@@ -94,9 +94,9 @@ export class DavenportScraper {
     
     const parts = locationString.split(delimiters)
       .map(part => part.trim())
-      .filter(part => part.length > 0);
+      .filter(part => part.length > 5); // Only keep meaningful address parts
     
-    // If no delimiters found, return the original string as a single item
+    // If no valid parts found, return the original string as a single item
     if (parts.length <= 1) {
       return [locationString.trim()];
     }
