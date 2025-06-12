@@ -167,12 +167,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stats", async (req, res) => {
     try {
       const users = await storage.getAllActiveUsers();
-      const locations = await storage.getActiveCameraLocations();
+      const currentMobileLocations = await storage.getActiveCameraLocations();
+      const allDeployments = await storage.getAllCameraDeployments();
+      const stationaryCameras = await storage.getActiveStationaryCameras();
+      
+      // Current Mobile Camera Locations = Active mobile cameras for this week
+      const currentMobileCount = currentMobileLocations.filter(loc => loc.type === 'mobile').length;
+      
+      // Total Historical Camera Locations = All deployments + stationary cameras
+      const totalHistoricalCount = allDeployments.length + stationaryCameras.length;
 
       res.json({
         subscribers: users.length,
-        locationsMonitored: locations.length,
-        lastUpdate: locations.length > 0 ? locations[0].lastUpdated : new Date()
+        currentMobileLocations: currentMobileCount,
+        totalHistoricalLocations: totalHistoricalCount,
+        locationsMonitored: currentMobileCount, // Legacy field for compatibility
+        lastUpdate: currentMobileLocations.length > 0 ? currentMobileLocations[0].lastUpdated : new Date()
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
