@@ -87,6 +87,23 @@ export class DavenportScraper {
     return dayPattern.test(text.trim());
   }
 
+  private splitLocationString(locationString: string): string[] {
+    // Split by various delimiters: –, -, &, and (case insensitive)
+    // Use regex to handle multiple types of dashes and ampersands
+    const delimiters = /\s*[–\-&]\s*|\s+and\s+/gi;
+    
+    const parts = locationString.split(delimiters)
+      .map(part => part.trim())
+      .filter(part => part.length > 0);
+    
+    // If no delimiters found, return the original string as a single item
+    if (parts.length <= 1) {
+      return [locationString.trim()];
+    }
+    
+    return parts;
+  }
+
   private parseDailyScheduleItem(text: string, dateRange: string): ScrapedLocation[] {
     const locations: ScrapedLocation[] = [];
     
@@ -99,18 +116,20 @@ export class DavenportScraper {
     // Extract locations after the colon
     const locationsPart = text.substring(text.indexOf(':') + 1).trim();
     
-    // The dash represents an intersection range, not separate locations
-    // Convert "5800 Eastern Ave – 1900 Brady St." to "5800 Eastern Ave & 1900 Brady St."
-    const intersectionAddress = locationsPart.replace(/\s*[–-]\s*/, ' & ');
+    // Split addresses by various delimiters (–, -, &, and)
+    const addressParts = this.splitLocationString(locationsPart);
     
-    if (intersectionAddress && intersectionAddress.length > 5) {
-      locations.push({
-        address: intersectionAddress,
-        type: 'mobile',
-        description: `Mobile camera intersection for ${day}`,
-        schedule: `${day} (${dateRange})`
-      });
-    }
+    // Create separate entries for each address
+    addressParts.forEach((address: string) => {
+      if (address && address.length > 5) {
+        locations.push({
+          address: address.trim(),
+          type: 'mobile',
+          description: `Mobile camera location for ${day}`,
+          schedule: `${day} (${dateRange})`
+        });
+      }
+    });
     
     return locations;
   }
@@ -126,17 +145,20 @@ export class DavenportScraper {
       const day = match[1];
       const locationsPart = match[2].trim();
       
-      // Convert dash to intersection (&) format
-      const intersectionAddress = locationsPart.replace(/\s*[–-]\s*/, ' & ');
+      // Split addresses by various delimiters (–, -, &, and)
+      const addressParts = this.splitLocationString(locationsPart);
       
-      if (intersectionAddress && intersectionAddress.length > 5) {
-        locations.push({
-          address: intersectionAddress,
-          type: 'mobile',
-          description: `Mobile camera intersection for ${day}`,
-          schedule: day
-        });
-      }
+      // Create separate entries for each address
+      addressParts.forEach((address: string) => {
+        if (address && address.length > 5) {
+          locations.push({
+            address: address.trim(),
+            type: 'mobile',
+            description: `Mobile camera location for ${day}`,
+            schedule: day
+          });
+        }
+      });
     }
     
     return locations;
