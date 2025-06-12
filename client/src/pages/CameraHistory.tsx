@@ -80,8 +80,12 @@ export default function CameraHistory() {
   }
 
   const recentDeployments = allDeployments
-    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-    .slice(0, 5);
+    .filter(d => d.isActive) // Show all current active deployments
+    .sort((a, b) => {
+      // Sort by start date descending, then by ID descending for same dates
+      const dateCompare = new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+      return dateCompare !== 0 ? dateCompare : b.id - a.id;
+    });
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -150,10 +154,10 @@ export default function CameraHistory() {
       {/* Interactive Map */}
       <CameraMap />
 
-      {/* Recent Deployments */}
+      {/* Current Week Deployments */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Deployments</CardTitle>
+          <CardTitle>Current Week Deployments</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -181,8 +185,8 @@ export default function CameraHistory() {
             {recentDeployments.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Camera className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No deployment history available</p>
-                <p className="text-sm">Camera deployments will appear here once they are recorded</p>
+                <p>No current deployments this week</p>
+                <p className="text-sm">Active camera deployments for this week will appear here</p>
               </div>
             )}
           </div>
