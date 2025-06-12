@@ -306,23 +306,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Helper function to split addresses
-      function splitLocationString(locationString: string): string[] {
+      // Helper functions moved outside
+      const splitLocationString = (locationString: string): string[] => {
         const delimiters = /\s*[–\-&]\s*|\s+and\s+/gi;
         const parts = locationString.split(delimiters)
           .map((part: string) => part.trim())
           .filter((part: string) => part.length > 5);
         return parts.length <= 1 ? [locationString.trim()] : parts;
-      }
+      };
 
-      // Helper function to get week of year
-      function getWeekOfYear(date: Date): string {
+      const getWeekOfYear = (date: Date): string => {
         const year = date.getFullYear();
         const start = new Date(year, 0, 1);
         const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
         const week = Math.ceil((days + start.getDay() + 1) / 7);
         return `${year}-W${week.toString().padStart(2, '0')}`;
-      }
+      };
 
       // Import the historical data with address splitting
       let imported = 0;
@@ -744,16 +743,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Force refresh - clear all deployments and rescrape
+  // Force refresh - clear only current data, preserve historical deployments
   app.post("/api/deployments/force-refresh", async (req, res) => {
     try {
-      console.log('Starting force refresh - clearing all deployments and rescaping...');
+      console.log('Starting force refresh - clearing current data while preserving historical deployments...');
 
-      // Clear all existing camera locations and deployments
+      // SAFETY: Only clear current active locations, preserve historical deployments
       await storage.clearAllCameraLocations();
-      await storage.clearHistoricalDeployments();
+      
+      // End current active deployments but keep historical records intact
+      const currentDeployments = await storage.getCurrentDeployments();
+      if (currentDeployments.length > 0) {
+        await storage.endCurrentDeployments(new Date().toISOString().split('T')[0]);
+        console.log(`Ended ${currentDeployments.length} current deployments while preserving historical data`);
+      }
 
-      console.log('Cleared all existing data, starting fresh scrape...');
+      console.log('Cleared current data only, preserving historical deployments. Starting fresh scrape...');
 
       // Force rescrape and reinitialize
       const { scraper } = await import('./scraper');

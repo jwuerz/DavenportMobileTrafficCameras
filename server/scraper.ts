@@ -576,9 +576,19 @@ export class DavenportScraper {
   }
 
   async forceRefresh(): Promise<void> {
-    console.log('Force refreshing camera locations...');
+    console.log('Force refreshing camera locations (preserving historical data)...');
+    
+    // SAFETY: Only clear current active locations, preserve historical deployments
     await storage.clearAllCameraLocations();
-    await storage.clearHistoricalDeployments();
+    
+    // End current active deployments but keep historical records intact
+    const currentDeployments = await storage.getCurrentDeployments();
+    if (currentDeployments.length > 0) {
+      await storage.endCurrentDeployments(new Date().toISOString().split('T')[0]);
+      console.log(`Ended ${currentDeployments.length} current deployments while preserving historical data`);
+    }
+    
+    // Initialize fresh data
     await this.initializeLocations();
   }
 }
